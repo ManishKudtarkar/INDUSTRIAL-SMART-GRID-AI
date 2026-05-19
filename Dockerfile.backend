@@ -1,0 +1,20 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Add ML dependencies for Advanced Models
+RUN pip install --no-cache-dir tensorflow keras scikit-learn pandas numpy pydantic fastapi uvicorn
+
+COPY . .
+
+# 8000 for FastAPI, 9999 for raw Socket telemetry from hardware
+EXPOSE 8000 9999
+
+CMD ["python", "api/main.py"]

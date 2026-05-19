@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000" # REST API
+      - "9999:9999" # Hardware Socket Stream
+    environment:
+      - ML_MODEL_TYPE=LSTM_AUTOENCODER
+      - AI_STRICT_BOUNDS=True
+    networks:
+      - grid_net
+    restart: always
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5173:5173" # React Vite UI
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    networks:
+      - grid_net
+    depends_on:
+      - backend
+    restart: always
+
+networks:
+  grid_net:
+    driver: bridge
