@@ -769,3 +769,363 @@ curl -X DELETE http://localhost:8000/alerts
 ```
 
 ---
+
+## 14. Dashboard Guide
+
+### A. React Dashboard — `http://localhost:5173`
+
+The React dashboard is the primary live monitoring interface. It polls `GET /state` every 1.5 seconds and updates all panels in real time.
+
+**Overview Tab**
+
+The main landing view. Shows:
+- A **SystemBanner** at the top with overall grid status (Healthy / Warning / Critical) and the count of active substations.
+- A **SubstationCard** for each connected substation displaying:
+  - Health score (0–100) with colour coding (green / amber / red)
+  - Current voltage, current, temperature, harmonic distortion, and load %
+  - Anomaly flag and active fault names
+  - Data source badge (USB / ADB / Simulation)
+
+**Live Trends Tab**
+
+- **LiveChart** component renders a rolling time-series chart for each substation.
+- Plots voltage, temperature, and load percentage over the last 20 readings.
+- Updates automatically as new telemetry arrives.
+
+**Load Balance Tab**
+
+- **LoadDistribution** component shows a bar chart of current load % per substation.
+- Highlights substations that have been reduced due to a critical state.
+- Shows the target fair-share line for reference.
+
+**Alerts Tab**
+
+- **AlertFeed** component lists all recent alerts in reverse chronological order.
+- Each alert shows: timestamp, substation ID, fault type, severity, and message.
+- A "Clear Alerts" button calls `DELETE /alerts`.
+
+**USB Device Panel**
+
+- **UsbStatus** component (sidebar or footer) shows all detected COM ports.
+- Indicates which ports are actively streaming and which substation they map to.
+- Useful for confirming your hardware is connected before starting a session.
+
+---
+
+### B. Streamlit Dashboard — `http://localhost:8501`
+
+The Streamlit dashboard (`dashboard/app.py`) provides an analytics-focused view. It polls `GET /state` every 1.5 seconds.
+
+**Features:**
+- Full grid state table with all substation metrics
+- Health score gauges per substation
+- Load distribution bar chart
+- Alert history table
+- Fault report summary
+- Auto-refresh toggle
+
+**Start it:**
+```bash
+streamlit run dashboard/app.py
+```
+
+---
+
+## 15. Alert Channels
+
+Alerts are fired by `AlertManager` when a substation enters Critical state. A **30-second cooldown** (ALERT_COOLDOWN_SEC) prevents alert spam for the same substation.
+
+Configure alert channels in your `.env` file:
+
+### Email (Gmail SMTP)
+
+```dotenv
+ALERT_EMAIL_FROM=your-email@gmail.com
+ALERT_EMAIL_TO=recipient@example.com
+ALERT_EMAIL_PASSWORD=your-app-password
+ALERT_SMTP_HOST=smtp.gmail.com
+ALERT_SMTP_PORT=587
+```
+
+> Use a Gmail **App Password** (not your account password). Generate one at: Google Account → Security → 2-Step Verification → App Passwords.
+
+### Slack
+
+```dotenv
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T.../B.../...
+```
+
+Create an Incoming Webhook in your Slack workspace: Slack API → Your Apps → Incoming Webhooks → Add New Webhook.
+
+### SMS via Twilio
+
+```dotenv
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_FROM_NUMBER=+1234567890
+TWILIO_TO_NUMBER=+0987654321
+```
+
+Sign up at [twilio.com](https://twilio.com) and get a free trial number.
+
+> All alert channels are **optional**. Leave the values blank to disable that channel. The system runs fine with no alert channels configured — alerts are still stored in memory and visible in the dashboard.
+
+---
+
+## 16. Project Structure
+
+```
+industrial-smart-grid-ai/
+│
+├── .env                          # Environment variables (copy and configure)
+├── .gitignore
+├── docker-compose.yml            # Docker multi-service orchestration
+├── Dockerfile.backend            # Backend container build
+├── Dockerfile.frontend           # Frontend container build
+├── requirements.txt              # Python dependencies
+├── start_all.py                  # Convenience script to start all services
+├── list_usb_ports.py             # Utility: list available COM ports
+├── setup_adb.py                  # Utility: verify/setup ADB
+├── scaffold_project.py           # Project scaffolding helper
+│
+├── alerts/                       # Alert delivery modules
+│   ├── alert_manager.py          # Orchestrates all alert channels + cooldown logic
+│   ├── critical_shutdown.py      # Emergency shutdown handler
+│   ├── email_alert.py            # SMTP email alerts
+│   ├── slack_alert.py            # Slack webhook alerts
+│   └── sms_alert.py              # Twilio SMS alerts
+│
+├── api/                          # FastAPI REST backend
+│   ├── main.py                   # App factory, router registration, socket server startup
+│   ├── routes/
+│   │   ├── anomaly_routes.py     # /anomaly/* endpoints
+│   │   ├── load_balancing_routes.py  # /load/* endpoints
+│   │   ├── prediction_routes.py  # /predict/* endpoints
+│   │   ├── telemetry_routes.py   # /telemetry/* endpoints
+│   │   └── usb_routes.py         # /usb/* endpoints
+│   ├── schemas/
+│   │   ├── fault_schema.py       # Pydantic fault report schema
+│   │   ├── response_schema.py    # Generic API response schemas
+│   │   └── telemetry_schema.py   # Telemetry packet schema
+│   └── services/
+│       ├── alert_service.py      # Alert retrieval and management
+│       ├── prediction_service.py # On-demand ML inference
+│       └── smart_grid_service.py # Grid state aggregation for API
+│
+├── dashboard/
+│   ├── app.py                    # Streamlit analytics dashboard
+│   ├── grafana/dashboards/       # Grafana dashboard JSON (optional)
+│   └── frontend/                 # React + Vite + Tailwind dashboard
+│       ├── src/
+│       │   ├── App.jsx           # Root component, tab routing
+│       │   ├── components/
+│       │   │   ├── AlertFeed.jsx       # Alert history list
+│       │   │   ├── LiveChart.jsx       # Rolling time-series chart
+│       │   │   ├── LoadDistribution.jsx # Load balance bar chart
+│       │   │   ├── SubstationCard.jsx  # Per-substation status card
+│       │   │   ├── SystemBanner.jsx    # Top-level grid status banner
+│       │   │   └── UsbStatus.jsx       # USB device connection panel
+│       │   └── main.jsx          # React entry point
+│       ├── package.json
+│       └── vite.config.js
+│
+├── explainability/               # ML explainability
+│   ├── feature_importance.py     # Feature importance extraction
+│   ├── root_cause_engine.py      # Root cause analysis (SHAP + rules)
+│   └── shap_explainer.py         # SHAP value computation
+│
+├── feature_engineering/          # Signal processing & feature extraction
+│   ├── feature_pipeline.py       # Main pipeline orchestrator
+│   ├── fft_analysis.py           # Fast Fourier Transform analysis
+│   ├── harmonic_analysis.py      # Harmonic distortion analysis
+│   ├── phase_unbalance.py        # Phase unbalance detection
+│   └── statistical_features.py  # Rolling mean, std, rate-of-change
+│
+├── ml/                           # Machine learning models
+│   ├── anomaly_detector.py       # IsolationForest wrapper (train + predict)
+│   └── health_score.py           # Health score calculator
+│
+├── ml_models/                    # Saved model artefacts
+│   ├── anomaly_detection/
+│   ├── load_balancing/
+│   ├── prediction/
+│   └── saved_models/             # Serialised .pkl / .h5 files
+│
+├── monitoring/                   # Observability
+│   ├── logging/
+│   ├── prometheus/               # Prometheus metrics config
+│   └── metrics_collector.py      # Custom metrics collection
+│
+├── notebooks/                    # Jupyter notebooks
+│   ├── anomaly_detection_training.ipynb
+│   ├── exploratory_analysis.ipynb
+│   ├── smart_grid_simulation.ipynb
+│   └── waveform_analysis.ipynb
+│
+├── platform-tools/               # Bundled Android ADB binaries (Windows)
+│   └── adb.exe
+│
+├── sensors/                      # Sensor simulation modules
+│   ├── current_sensor.py
+│   ├── sensor_simulator.py
+│   ├── thermal_sensor.py
+│   ├── vibration_sensor.py
+│   └── voltage_sensor.py
+│
+├── server/                       # TCP socket server
+│   ├── connection_handler.py     # Per-client connection handler
+│   ├── socket_server.py          # Main SmartGridSocketServer class
+│   └── telemetry_manager.py      # Rolling history buffer per substation
+│
+├── shared/                       # Shared utilities
+│   ├── config.py                 # All tuneable parameters (single source of truth)
+│   ├── schemas.py                # Shared data schemas
+│   └── utils.py                  # Logger factory and helpers
+│
+├── smart_grid/                   # Core grid intelligence
+│   ├── fault_isolation.py        # 6-rule fault classifier
+│   ├── load_balancer.py          # Load redistribution algorithm
+│   ├── load_transfer_controller.py  # Load transfer execution
+│   ├── self_healing_engine.py    # Gradual load recovery engine
+│   ├── smart_relay_controller.py # Relay switching logic
+│   └── substation_manager.py     # Substation lifecycle management
+│
+├── streaming/                    # Stream processing (Kafka/Spark)
+│   ├── fault_event_processor.py
+│   ├── spark_streaming.py
+│   ├── stream_aggregator.py
+│   └── window_processing.py
+│
+├── substations/                  # Substation client implementations
+│   ├── adb_substation_client.py  # Android phone via ADB
+│   ├── fault_simulator.py        # Fault injection for simulation
+│   ├── substation_client.py      # Main entry point (routes to USB/ADB/sim)
+│   ├── telemetry_generator.py    # Synthetic telemetry generator
+│   ├── universal_hw_client.py    # Universal hardware client
+│   └── usb_substation_client.py  # Arduino/ESP32 via USB serial
+│
+├── database/                     # Database layer
+│   ├── db_manager.py             # Database connection manager
+│   ├── schema.sql                # SQL schema
+│   ├── influxdb/                 # InfluxDB time-series config
+│   └── timescaledb/              # TimescaleDB config
+│
+├── deployment/                   # Deployment configs
+│   ├── aws/                      # AWS deployment scripts
+│   ├── docker/                   # Docker configs
+│   ├── kubernetes/               # K8s manifests
+│   └── terraform/                # Infrastructure as code
+│
+└── testing/                      # Test suites
+    ├── integration_tests/
+    ├── load_tests/
+    ├── streaming_tests/
+    └── unit_tests/
+```
+
+---
+
+## 17. Configuration Reference
+
+All tuneable parameters live in `shared/config.py`. Change a value once and it applies everywhere.
+
+| Key | Default | Description |
+|---|---|---|
+| `SERVER_HOST` | `"0.0.0.0"` | Bind address for the TCP socket server |
+| `SERVER_PORT` | `9999` | TCP port for telemetry streaming |
+| `API_HOST` | `"0.0.0.0"` | FastAPI bind address |
+| `API_PORT` | `8000` | FastAPI HTTP port |
+| `DEFAULT_SUBSTATIONS` | `["S1","S2","S3"]` | Default substation IDs |
+| `TELEMETRY_INTERVAL` | `1.5` | Seconds between telemetry packets |
+| `VOLTAGE_MIN` | `220.0` | Normal lower voltage bound (V) |
+| `VOLTAGE_MAX` | `240.0` | Normal upper voltage bound (V) |
+| `CURRENT_MIN` | `10.0` | Normal lower current bound (A) |
+| `CURRENT_MAX` | `20.0` | Normal upper current bound (A) |
+| `TEMP_MIN` | `50.0` | Normal lower temperature bound (°C) |
+| `TEMP_MAX` | `75.0` | Normal upper temperature bound (°C) |
+| `HARMONIC_MIN` | `1.0` | Normal lower harmonic distortion (%) |
+| `HARMONIC_MAX` | `5.0` | Normal upper harmonic distortion (%) |
+| `LOAD_MIN` | `20.0` | Normal lower load bound (%) |
+| `LOAD_MAX` | `60.0` | Normal upper load bound (%) |
+| `FAULT_VOLTAGE_LOW` | `170.0` | Voltage sag fault trigger (V) |
+| `FAULT_VOLTAGE_HIGH` | `190.0` | Voltage surge fault trigger (V) |
+| `FAULT_TEMP_HIGH` | `100.0` | Overheat fault trigger (°C) |
+| `FAULT_HARMONIC_HIGH` | `10.0` | Harmonic fault trigger (%) |
+| `FAULT_LOAD_HIGH` | `85.0` | Overload fault trigger (%) |
+| `HEALTH_HEALTHY_MIN` | `80` | Minimum score for Healthy status |
+| `HEALTH_WARNING_MIN` | `50` | Minimum score for Warning status |
+| `CRITICAL_LOAD_FLOOR` | `10.0` | Minimum load assigned to critical substation (%) |
+| `DEFAULT_LOAD_SHARE` | `33.3` | Equal load share when all substations healthy (%) |
+| `RECOVERY_THRESHOLD` | `70` | Health score above which recovery begins |
+| `RECOVERY_STEP` | `5.0` | Load % restored per healing cycle |
+| `HEALING_INTERVAL` | `10` | Seconds between self-healing checks |
+| `MAX_ALERT_HISTORY` | `100` | Maximum alerts kept in memory |
+| `ALERT_COOLDOWN_SEC` | `30` | Minimum seconds between alerts for same substation |
+| `ISOLATION_FOREST_CONTAMINATION` | `0.1` | Expected anomaly fraction (0–0.5) |
+| `ISOLATION_FOREST_TRAINING_SAMPLES` | `500` | Packets collected before model trains |
+| `MODEL_SAVE_PATH` | `"ml_models/saved_models"` | Directory for serialised model files |
+| `HISTORY_WINDOW` | `20` | Rolling history buffer size per substation |
+
+---
+
+## 18. Docker Deployment
+
+Run the entire stack (backend + frontend) with a single command using Docker Compose.
+
+### Step 1 — Install Docker
+
+Download and install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+### Step 2 — Build and start all services
+
+```bash
+cd industrial-smart-grid-ai
+docker-compose up --build
+```
+
+This builds two images and starts:
+- `backend` — FastAPI + Socket Server on ports **8000** and **9999**
+- `frontend` — React dashboard on port **5173**
+
+### Step 3 — Connect substation clients
+
+Substation clients run on separate machines (or locally) and connect to the server:
+
+```bash
+# From any machine on the same network:
+python substations/substation_client.py --id S1 --host <server-ip> --simulate
+```
+
+### Step 4 — Stop the stack
+
+```bash
+docker-compose down
+```
+
+### Environment variables for Docker
+
+Override defaults by editing `docker-compose.yml` or passing `-e` flags:
+
+```yaml
+environment:
+  - ML_MODEL_TYPE=ISOLATION_FOREST   # or LSTM_AUTOENCODER
+  - VITE_API_BASE_URL=http://192.168.1.100:8000
+```
+
+### Useful Docker commands
+
+```bash
+# View logs for the backend:
+docker-compose logs -f backend
+
+# Rebuild only the backend after code changes:
+docker-compose up --build backend
+
+# Run in detached (background) mode:
+docker-compose up -d --build
+
+# Check running containers:
+docker-compose ps
+```
+
+---
