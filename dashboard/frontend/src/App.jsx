@@ -15,7 +15,7 @@ import LoadDistribution from './components/LoadDistribution'
 import AlertFeed        from './components/AlertFeed'
 import UsbStatus        from './components/UsbStatus'
 
-const API          = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const API          = import.meta.env.VITE_API_BASE_URL || ''
 const POLL_MS      = 1500
 const HISTORY_MAX  = 60
 
@@ -301,7 +301,7 @@ export default function App() {
       {/* ── Footer ──────────────────────────────────────────────────────── */}
       <footer className="border-t border-grid-border mt-8 py-3 text-center">
         <p className="text-[10px] text-grid-muted font-mono">
-          Industrial Smart Grid AI · API {API} · Polling every {POLL_MS}ms
+          Industrial Smart Grid AI · API {API || 'http://localhost:8000'} · Polling every {POLL_MS}ms
         </p>
       </footer>
     </div>
