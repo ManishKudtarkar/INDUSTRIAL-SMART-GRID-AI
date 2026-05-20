@@ -86,9 +86,11 @@ class AdbSubstationClient:
         )
         if os.path.exists(local):
             logger.info(f"Using local ADB: {local}")
+            self._restart_adb_server(local)
             return local
         try:
             subprocess.run(["adb", "version"], capture_output=True, timeout=3)
+            self._restart_adb_server("adb")
             return "adb"
         except Exception:
             logger.error(
@@ -96,6 +98,18 @@ class AdbSubstationClient:
                 "Or download from: https://developer.android.com/tools/releases/platform-tools"
             )
             return None
+
+    def _restart_adb_server(self, adb_cmd: str) -> None:
+        """Kill and restart the ADB server to clear any stale state."""
+        try:
+            logger.info("[ADB] Restarting ADB server to clear stale connections…")
+            subprocess.run([adb_cmd, "kill-server"], capture_output=True, timeout=5)
+            time.sleep(1)
+            subprocess.run([adb_cmd, "start-server"], capture_output=True, timeout=10)
+            time.sleep(1)
+            logger.info("[ADB] ADB server restarted.")
+        except Exception as e:
+            logger.warning(f"[ADB] Could not restart server: {e}")
 
     # ── Public ────────────────────────────────────────────────────────────────
 
@@ -128,21 +142,31 @@ class AdbSubstationClient:
             # Check device is connected and authorised
             out = subprocess.run(
                 [self._adb_cmd, "devices"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True, text=True, timeout=10,
             ).stdout
             device_lines = [
                 l for l in out.splitlines()
                 if "\tdevice" in l and "unauthorized" not in l
             ]
             if not device_lines:
-                if self._device_connected:
-                    logger.warning(f"[{self.substation_id}] Phone disconnected.")
-                    self._device_connected = False
-                else:
-                    logger.info(
-                        f"[{self.substation_id}] Waiting for Android phone via USB…\n"
-                        "  → Enable USB Debugging: Settings → Developer Options → USB Debugging"
+                # Check for unauthorized (USB debugging not accepted yet)
+                unauth = [l for l in out.splitlines() if "unauthorized" in l]
+                if unauth:
+                    logger.warning(
+                        f"[{self.substation_id}] Phone found but UNAUTHORIZED.\n"
+                        "  → On your phone: tap 'Allow' on the USB Debugging popup\n"
+                        "  → If no popup appears: unplug and replug the USB cable"
                     )
+                else:
+                    if self._device_connected:
+                        logger.warning(f"[{self.substation_id}] Phone disconnected.")
+                        self._device_connected = False
+                    else:
+                        logger.info(
+                            f"[{self.substation_id}] Waiting for Android phone via USB…\n"
+                            "  → Enable USB Debugging: Settings → Developer Options → USB Debugging\n"
+                            "  → Then accept the 'Allow USB Debugging' popup on your phone"
+                        )
                 return None
 
             if not self._device_connected:
@@ -226,7 +250,8 @@ class AdbSubstationClient:
             return packet
 
         except subprocess.TimeoutExpired:
-            logger.warning(f"[{self.substation_id}] ADB command timed out.")
+            logger.warning(f"[{self.substation_id}] ADB command timed out — restarting ADB server…")
+            self._restart_adb_server(self._adb_cmd)
             return None
         except Exception as e:
             logger.error(f"[{self.substation_id}] ADB read error: {e}")

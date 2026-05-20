@@ -36,6 +36,9 @@ from server.telemetry_manager import TelemetryManager
 from shared.utils import get_logger
 from shared.config import SERVER_HOST, SERVER_PORT, ALERT_COOLDOWN_SEC
 
+# Max concurrent substation connections
+MAX_CONNECTIONS = 50
+
 # ── Advanced ML models (wired in from ml_models/) ────────────────────────────
 try:
     from ml_models.anomaly_detection.lstm_anomaly_detector import LSTMAnomalyDetector
@@ -113,6 +116,7 @@ class SmartGridSocketServer:
         # Alert cooldown tracking
         self._last_alert: dict = {}
         self._lock = threading.Lock()
+        self._connection_semaphore = threading.Semaphore(MAX_CONNECTIONS)
 
         # Socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -128,22 +132,27 @@ class SmartGridSocketServer:
 
     # ── Public ────────────────────────────────────────────────────────────────
 
-    def start(self) -> None:
+    def start(self, ready_event: threading.Event | None = None) -> None:
         self._server_socket.bind((self.host, self.port))
         self._server_socket.listen(10)
         self.healer.start()
         logger.info(f"[SERVER] Listening on {self.host}:{self.port}")
-
+        if ready_event:
+            ready_event.set()   # signal that the server is ready to accept
         try:
             while True:
                 conn, addr = self._server_socket.accept()
+                if not self._connection_semaphore.acquire(blocking=False):
+                    logger.warning(f"[SERVER] Max connections ({MAX_CONNECTIONS}) reached. Rejecting {addr}")
+                    conn.close()
+                    continue
                 handler = ConnectionHandler(
                     conn=conn,
                     addr=addr,
                     process_callback=self.process_telemetry,
                     disconnect_callback=self._on_disconnect,
                 )
-                t = threading.Thread(target=handler.handle, daemon=True)
+                t = threading.Thread(target=self._handle_with_semaphore, args=(handler,), daemon=True)
                 t.start()
                 logger.info(f"[CONNECTIONS] Active: {threading.active_count() - 1}")
         except KeyboardInterrupt:
@@ -151,11 +160,27 @@ class SmartGridSocketServer:
         finally:
             self._server_socket.close()
 
+    def _handle_with_semaphore(self, handler) -> None:
+        """Run handler and release semaphore when done."""
+        try:
+            handler.handle()
+        finally:
+            self._connection_semaphore.release()
+
     def process_telemetry(self, packet: dict) -> None:
         """Full AI pipeline for one telemetry packet."""
         sub_id = packet.get("substation_id")
         if not sub_id:
             return
+
+        # Coerce numeric fields to float — prevents crashes on string values
+        for field in ("voltage", "current", "temperature", "harmonic_5th", "load_percentage"):
+            val = packet.get(field)
+            if val is not None:
+                try:
+                    packet[field] = float(val)
+                except (TypeError, ValueError):
+                    packet[field] = None
 
         # 1. Store
         with self._lock:

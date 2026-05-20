@@ -16,33 +16,26 @@ requests==2.34.2
 # ── Hardware / Serial ─────────────────────────────────────────────────────────
 pyserial==3.5
 
-# ── HTTP client (testing + API calls) ────────────────────────────────────────
+# ── HTTP client ───────────────────────────────────────────────────────────────
 httpx==0.28.1
 
 # ── Explainability ────────────────────────────────────────────────────────────
-# shap requires numpy + sklearn — install separately if needed:
-# pip install shap
-shap
+shap==0.51.0
 
 # ── Visualisation ─────────────────────────────────────────────────────────────
-matplotlib
-seaborn
+matplotlib==3.10.9
+seaborn==0.13.2
 
 # ── Database (optional — only needed if DB_URL is set in .env) ───────────────
-sqlalchemy
+sqlalchemy==2.0.49
 psycopg2-binary
 
-# ── Messaging (optional — only needed for Kafka integration) ─────────────────
-kafka-python
-
 # ── Testing ───────────────────────────────────────────────────────────────────
-pytest
+pytest==9.0.3
 pytest-asyncio
 pytest-cov
+httpx==0.28.1
 
-# ── NOTE: tensorflow/keras are NOT listed here.
-#    Python 3.14 is not yet supported by TensorFlow.
-#    The LSTM Autoencoder (ml_models/anomaly_detection/advanced_lstm_autoencoder.py)
-#    uses a numpy-only fallback automatically when TF is absent.
-#    Install TF manually on Python 3.10/3.11 if you need the full TF version:
+# ── NOTE: tensorflow/keras NOT listed — Python 3.14 not yet supported.
+#    Install manually on Python 3.10/3.11 if needed:
 #    pip install tensorflow==2.15.0
