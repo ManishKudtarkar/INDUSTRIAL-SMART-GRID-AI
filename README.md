@@ -1,1131 +1,330 @@
 # ⚡ Industrial Smart Grid AI
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?logo=fastapi)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-18%2B-61DAFB?logo=react)](https://react.dev)
-[![scikit-learn](https://img.shields.io/badge/scikit--learn-IsolationForest-F7931E?logo=scikit-learn)](https://scikit-learn.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+> A distributed AI-powered smart grid simulation and real-time monitoring system.
+> Multiple devices stream live electrical telemetry to a central AI server that runs
+> anomaly detection, health scoring, fault isolation, predictive maintenance, and
+> automatic load balancing — all displayed on a live React dashboard.
 
-> A distributed, AI-powered smart grid monitoring system that ingests real-time telemetry from physical sensors (Android phones, Arduino/ESP32, or simulation), detects anomalies with machine learning, scores substation health, isolates faults, rebalances load, and self-heals — all visualised on a live React + Streamlit dashboard.
+[![Python](https://img.shields.io/badge/Python-3.14.3-blue)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.136.1-green)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-19-61DAFB)](https://react.dev)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.8.0-orange)](https://scikit-learn.org)
 
 ---
 
 ## Table of Contents
 
-1. [What Is This?](#1-what-is-this)
-2. [System Architecture](#2-system-architecture)
-3. [AI Pipeline Flow](#3-ai-pipeline-flow)
-4. [Data Sources](#4-data-sources)
-5. [Prerequisites](#5-prerequisites)
-6. [Installation](#6-installation)
-7. [Running the System](#7-running-the-system)
-8. [Telemetry Packet Format](#8-telemetry-packet-format)
-9. [Health Score System](#9-health-score-system)
-10. [Fault Types](#10-fault-types)
-11. [Load Redistribution](#11-load-redistribution)
-12. [Self-Healing Engine](#12-self-healing-engine)
-13. [API Reference](#13-api-reference)
-14. [Dashboard Guide](#14-dashboard-guide)
-15. [Alert Channels](#15-alert-channels)
-16. [Project Structure](#16-project-structure)
-17. [Configuration Reference](#17-configuration-reference)
-18. [Docker Deployment](#18-docker-deployment)
-19. [Tech Stack](#19-tech-stack)
-20. [Troubleshooting](#20-troubleshooting)
-21. [Contributing & License](#21-contributing--license)
+1. [What This System Does](#1-what-this-system-does)
+2. [End-to-End System Flow](#2-end-to-end-system-flow)
+3. [System Architecture](#3-system-architecture)
+4. [Data Sources — Where S1/S2/S3 Data Comes From](#4-data-sources)
+5. [Communication Protocol](#5-communication-protocol)
+6. [AI Pipeline — Step by Step](#6-ai-pipeline)
+7. [All ML Models](#7-all-ml-models)
+8. [Health Score System](#8-health-score-system)
+9. [Load Balancing & Self-Healing](#9-load-balancing--self-healing)
+10. [Alert System](#10-alert-system)
+11. [Quick Start](#11-quick-start)
+12. [Distributed Multi-Device Setup](#12-distributed-multi-device-setup)
+13. [Android Phone via ADB — Step by Step](#13-android-phone-via-adb)
+14. [Arduino / ESP32 via USB — Step by Step](#14-arduino--esp32-via-usb)
+15. [API Reference](#15-api-reference)
+16. [Dashboard](#16-dashboard)
+17. [Project Structure](#17-project-structure)
+18. [Configuration](#18-configuration)
+19. [Docker Deployment](#19-docker-deployment)
+20. [Tech Stack](#20-tech-stack)
 
 ---
 
-## 1. What Is This?
+## 1. What This System Does
 
-### What is a Smart Grid?
+This project simulates a real industrial smart grid where multiple devices act as virtual electrical substations. Each device streams live sensor data to a central AI server that:
 
-A traditional power grid sends electricity in one direction — from a power plant to your home. A **smart grid** adds two-way communication: sensors at every substation continuously report voltage, current, temperature, and load back to a central system. That system can then detect problems, reroute power, and even fix itself — all automatically.
+- Detects anomalies using **IsolationForest** (point-based) and **LSTM** (sequence/trend-based)
+- Calculates a **health score (0–100)** for each substation every 1.5 seconds
+- Classifies **fault types** (overheat, voltage sag, overload, harmonics, overcurrent)
+- **Predicts overload** risk in the next 5 readings using RandomForest
+- **Predicts transformer failure** probability over 24 hours using Logistic Regression
+- **Automatically redistributes load** away from failing substations
+- **Self-heals** by gradually restoring load as substations recover
+- Sends **Email / Slack / SMS alerts** on critical events
+- Displays everything on a **live React dashboard** with real-time charts
 
-### What does this project do?
-
-This project simulates and monitors a **distributed industrial smart grid** with multiple substations. Each substation streams live telemetry data to a central AI server. The server:
-
-- **Detects anomalies** using a trained IsolationForest model
-- **Scores health** of each substation on a 0–100 scale
-- **Isolates faults** by classifying what went wrong (overheat, voltage sag, overload, etc.)
-- **Rebalances load** by shifting work away from struggling substations
-- **Self-heals** by gradually restoring load as a substation recovers
-- **Fires alerts** via Email, Slack, or SMS when things go critical
-- **Visualises everything** on a live React dashboard and a Streamlit analytics view
-
-### Role of each component
-
-| Component | Role |
-|---|---|
-| **Substation Client** | Reads sensor data and streams it over TCP to the AI server |
-| **Socket Server** | Receives telemetry packets and feeds them into the AI pipeline |
-| **AI Pipeline** | Feature engineering → anomaly detection → health scoring → fault isolation |
-| **Load Balancer** | Redistributes load % across substations based on health |
-| **Self-Healing Engine** | Gradually restores load to recovering substations |
-| **Alert Manager** | Sends Email/Slack/SMS notifications on critical events |
-| **FastAPI Backend** | Exposes all grid state via a REST API |
-| **React Dashboard** | Live visual interface at `http://localhost:5173` |
-| **Streamlit Dashboard** | Analytics and monitoring view at `http://localhost:8501` |
+Think of it as a miniature SCADA + predictive maintenance platform.
 
 ---
 
-## 2. System Architecture
+## 2. End-to-End System Flow
 
 ```mermaid
 flowchart TD
-    subgraph DATA_SOURCES["Data Sources"]
-        A1["📱 Android Phone\n(ADB over USB)"]
-        A2["🔌 Arduino / ESP32\n(USB Serial)"]
-        A3["🖥️ Simulation Mode\n(Synthetic Data)"]
+    A[📱 Android Phone\nUSB + ADB] -->|Real battery V/T/level| D
+    B[🔌 Arduino/ESP32\nUSB Serial COM port] -->|Real sensor JSON| D
+    C[💻 Laptop Simulator\n--simulate flag] -->|Synthetic telemetry| D
+
+    D[TCP Socket\nport 9999\nnewline-delimited JSON] --> E
+
+    E[server/socket_server.py\nReceives all streams] --> F
+
+    subgraph AI_PIPELINE [AI Pipeline — runs on every packet]
+        F[Step 1: Validate & Store\nTelemetryManager] --> G
+        G[Step 2: Feature Engineering\n42 features extracted] --> H
+        H[Step 3: IsolationForest\nPoint anomaly detection] --> I
+        I[Step 4: LSTM Detector\nSequence/trend anomaly] --> J
+        J[Step 5: Health Score\n0-100 with penalties] --> K
+        K[Step 6: Fault Isolation\n6 fault types classified] --> L
+        L[Step 7: Overload Predictor\nNext-5-readings risk] --> M
+        M[Step 8: Failure Predictor\n24-hour probability] --> N
+        N[Step 9: Load Redistribution\nRedistributionEngine] --> O
+        O[Step 10: Self-Healing\nGradual load recovery] --> P
+        P[Step 11: Alert Dispatch\nEmail + Slack + SMS]
     end
 
-    subgraph TRANSPORT["Transport Layer"]
-        B["TCP Socket\nport 9999"]
-    end
-
-    subgraph AI_PIPELINE["AI Server Pipeline"]
-        C1["Feature Engineering\n(rolling stats, FFT, harmonics)"]
-        C2["Anomaly Detection\n(IsolationForest)"]
-        C3["Health Scoring\n(0–100 score)"]
-        C4["Fault Isolation\n(6 fault types)"]
-        C5["Load Balancing\n(redistribute %)"]
-        C6["Self-Healing Engine\n(gradual recovery)"]
-        C7["Alert Manager\n(Email / Slack / SMS)"]
-    end
-
-    subgraph API["REST API"]
-        D["FastAPI\nport 8000"]
-    end
-
-    subgraph DASHBOARDS["Dashboards"]
-        E1["⚛️ React Dashboard\nport 5173"]
-        E2["📊 Streamlit Dashboard\nport 8501"]
-    end
-
-    A1 --> B
-    A2 --> B
-    A3 --> B
-    B --> C1
-    C1 --> C2
-    C2 --> C3
-    C3 --> C4
-    C4 --> C5
-    C5 --> C6
-    C6 --> C7
-    C7 --> D
-    C3 --> D
-    C4 --> D
-    C5 --> D
-    D --> E1
-    D --> E2
+    P --> Q[FastAPI REST API\nport 8000\n25 endpoints]
+    Q --> R[React Dashboard\nlocalhost:5173\nPolls every 1.5s]
+    Q --> S[Streamlit Dashboard\nlocalhost:8501\nFallback]
 ```
 
 ---
 
-## 3. AI Pipeline Flow
+## 3. System Architecture
 
 ```mermaid
-sequenceDiagram
-    participant SUB as Substation Client
-    participant SOCK as Socket Server (9999)
-    participant FE as Feature Engineering
-    participant IF as IsolationForest
-    participant HS as Health Score
-    participant FI as Fault Isolation
-    participant LB as Load Balancer
-    participant SH as Self-Healing Engine
-    participant AM as Alert Manager
-    participant API as FastAPI (8000)
-    participant DASH as Dashboard
+graph TB
+    subgraph DEVICES [Substation Devices]
+        D1[Laptop 1\nSubstation S1\nHealthy]
+        D2[Android Phone\nSubstation S2\nReal ADB data]
+        D3[Arduino/ESP32\nSubstation S3\nReal sensors]
+    end
 
-    SUB->>SOCK: JSON telemetry packet (every 1.5s)
-    SOCK->>FE: Raw telemetry dict
-    FE->>FE: Compute rolling mean, std, rate-of-change
-    FE->>IF: Feature vector [voltage, current, temp, harmonic, load]
-    IF->>IF: Score with trained IsolationForest
-    IF->>HS: is_anomaly (bool)
-    HS->>HS: Apply penalty rules → score 0–100
-    HS->>FI: telemetry + health score
-    FI->>FI: Check 6 fault rules
-    FI->>LB: fault report + health data
-    LB->>LB: Redistribute load %
-    LB->>SH: Updated load distribution
-    SH->>SH: Check recovery threshold
-    SH->>AM: health_score, risk_level
-    AM->>AM: Cooldown check → fire Email/Slack/SMS
-    AM->>API: Alert stored in history
-    API->>DASH: GET /state → full grid snapshot
+    subgraph SERVER [AI Server - Main Laptop]
+        SS[socket_server.py\nTCP port 9999]
+        TM[TelemetryManager\nRolling history per sub]
+        FE[Feature Engineering\n42 features]
+
+        subgraph ML [ML Models - ml_models/]
+            IF[IsolationForest\nPoint anomaly]
+            LSTM[LSTM Detector\nSequence anomaly]
+            HS[HealthScoreModel\nGradientBoosting]
+            OP[OverloadPredictor\nRandomForest]
+            FP[FailurePredictor\nLogisticRegression]
+            LO[LoadOptimizer\nWeighted allocation]
+        end
+
+        subgraph GRID [Smart Grid Logic]
+            RE[RedistributionEngine\nSmooth transitions]
+            SH[SelfHealingEngine\nGradual recovery]
+            FI[FaultIsolation\n6 fault types]
+        end
+
+        AM[AlertManager\nEmail+Slack+SMS]
+        API[FastAPI\nport 8000\n25 endpoints]
+    end
+
+    subgraph DASH [Dashboards]
+        RD[React Dashboard\nlocalhost:5173]
+        ST[Streamlit\nlocalhost:8501]
+    end
+
+    D1 -->|TCP JSON 1.5s| SS
+    D2 -->|TCP JSON 2s| SS
+    D3 -->|TCP JSON 1.5s| SS
+
+    SS --> TM
+    TM --> FE
+    FE --> IF
+    FE --> LSTM
+    IF --> HS
+    LSTM --> HS
+    HS --> FI
+    FI --> OP
+    OP --> FP
+    FP --> RE
+    RE --> SH
+    SH --> AM
+    AM --> API
+    HS --> API
+    FI --> API
+    OP --> API
+    FP --> API
+
+    API -->|GET /state every 1.5s| RD
+    API -->|GET /state every 1.5s| ST
 ```
 
 ---
 
 ## 4. Data Sources
 
-### A. Android Phone via ADB
-
-Your Android phone becomes a real sensor. The ADB client reads live battery and CPU data and maps it to grid telemetry fields.
-
-**Sensor Mapping Table**
-
-| Phone Sensor | Grid Field | Mapping Formula |
-|---|---|---|
-| Battery voltage (mV) | `voltage` | `200 + ((batt_v - 3.3) / (4.2 - 3.3)) * 45` → 200–245 V |
-| Battery temperature (decidegrees) | `temperature` | `raw / 10` → real °C |
-| Battery level (%) | `load_percentage` | Direct (0–100%) |
-| CPU usage (%) | `current` | `10 + (cpu_pct / 100) * 10` → 10–20 A |
-| Charging state | `harmonic_5th` | AC charging=1.5, USB=3.0, Discharging=5.5 |
-
-**Step-by-step setup**
-
-1. On your Android phone, go to **Settings → About Phone** and tap **Build Number** 7 times to unlock Developer Options.
-2. Go to **Settings → Developer Options** and enable **USB Debugging**.
-3. Connect your phone to your laptop with a USB cable.
-4. When the phone shows a prompt asking *"Allow USB Debugging?"*, tap **Allow**.
-5. Verify the phone is detected:
-   ```bash
-   platform-tools\adb.exe devices
-   # Should show: <serial>    device
-   ```
-6. Run the ADB substation client:
-   ```bash
-   python substations/substation_client.py --id S1 --source adb
-   ```
-
----
-
-### B. Arduino / ESP32 via USB Serial
-
-Any microcontroller that can send serial JSON works. The client auto-detects the COM port.
-
-**Expected JSON format** (sent every ~1 second at 9600 baud):
-
-```json
-{"voltage": 230.1, "current": 15.2, "temperature": 60.5, "harmonic_5th": 2.1, "load_percentage": 45.0}
-```
-
-- Terminate each line with `\n`
-- Baud rate: **9600** (configurable with `--baud`)
-- Protocol: **USB Serial / UART**
-- Missing fields are accepted — the server flags them but still processes the packet
-
-**List available ports:**
-```bash
-python substations/substation_client.py --list-ports
-```
-
-**Run with auto-detected port:**
-```bash
-python substations/substation_client.py --id S1 --host 192.168.1.100
-```
-
-**Run with explicit port:**
-```bash
-python substations/substation_client.py --id S1 --host 192.168.1.100 --port-name COM3
-# Linux/Mac:
-python substations/substation_client.py --id S1 --host 192.168.1.100 --port-name /dev/ttyUSB0
-```
-
----
-
-### C. Simulation Mode
-
-Generates realistic synthetic telemetry using `TelemetryGenerator`. Optionally injects faults with `FaultSimulator`.
-
-**When to use:** Development, demos, CI testing — any time you don't have physical hardware.
-
-**Run simulation (clean data):**
-```bash
-python substations/substation_client.py --id S1 --simulate
-```
-
-**Run simulation with fault injection:**
-```bash
-python substations/substation_client.py --id S2 --simulate --faulty --fault-prob 0.3
-```
-
-**Run 3 simulated substations at once:**
-```bash
-python substations/substation_client.py --id S1 --simulate &
-python substations/substation_client.py --id S2 --simulate --faulty &
-python substations/substation_client.py --id S3 --simulate &
-```
-
----
-
-## 5. Prerequisites
-
-| Requirement | Version | Notes |
-|---|---|---|
-| **Python** | 3.10+ | [python.org](https://python.org) |
-| **Node.js** | 18+ | [nodejs.org](https://nodejs.org) — needed for the React dashboard |
-| **Git** | Any | [git-scm.com](https://git-scm.com) |
-| **ADB** | Any | Only needed for Android phone source. Already bundled in `platform-tools/` |
-| **pyserial** | 3.5+ | Installed via `requirements.txt` — needed for USB serial source |
-
-**Check your versions:**
-```bash
-python --version      # Python 3.10.x or higher
-node --version        # v18.x or higher
-git --version
-```
-
----
-
-## 6. Installation
-
-### Step 1 — Clone the repository
-
-```bash
-git clone https://github.com/your-username/industrial-smart-grid-ai.git
-cd industrial-smart-grid-ai
-```
-
-### Step 2 — Install Python dependencies
-
-```bash
-# Create and activate a virtual environment (recommended)
-python -m venv .venv
-
-# Windows
-.venv\Scripts\activate
-
-# macOS / Linux
-source .venv/bin/activate
-
-# Install all packages
-pip install -r requirements.txt
-```
-
-### Step 3 — Install frontend dependencies
-
-```bash
-cd dashboard/frontend
-npm install
-cd ../..
-```
-
-### Step 4 — Copy `.env` and configure
-
-```bash
-# The .env file is already present in the repo root.
-# Open it and fill in any optional values (email, Slack, SMS).
-# The defaults work out of the box for local development.
-```
-
-Key variables to review:
-
-```dotenv
-SERVER_HOST=0.0.0.0       # AI server bind address
-SERVER_PORT=9999           # TCP socket port
-API_HOST=0.0.0.0
-API_PORT=8000
-VITE_API_BASE_URL=http://localhost:8000   # Change to server IP for multi-device setup
-```
-
-### Step 5 — (Optional) Verify ADB is available
-
-ADB is already bundled in `platform-tools/`. To verify:
-
-```bash
-platform-tools\adb.exe version
-# Or run the setup helper:
-python setup_adb.py
-```
-
----
-
-## 7. Running the System
-
-### A. Single Machine Quick Start
-
-All three options below start the AI server + React dashboard on the same machine.
-
----
-
-**Option 1 — With a real USB sensor (Arduino / ESP32)**
-
-Terminal 1 — Start the AI server and dashboard:
-```bash
-python api/main.py
-```
-
-Terminal 2 — Start the React frontend:
-```bash
-cd dashboard/frontend
-npm run dev
-```
-
-Terminal 3 — Start the USB substation client:
-```bash
-python substations/substation_client.py --id S1
-```
-
----
-
-**Option 2 — With an Android phone via ADB**
-
-Terminal 1:
-```bash
-python api/main.py
-```
-
-Terminal 2:
-```bash
-cd dashboard/frontend && npm run dev
-```
-
-Terminal 3:
-```bash
-python substations/substation_client.py --id S1 --source adb
-```
-
----
-
-**Option 3 — Simulation mode (demo, no hardware needed)**
-
-Terminal 1:
-```bash
-python api/main.py
-```
-
-Terminal 2:
-```bash
-cd dashboard/frontend && npm run dev
-```
-
-Terminal 3 — Start 3 simulated substations:
-```bash
-python substations/substation_client.py --id S1 --simulate
-python substations/substation_client.py --id S2 --simulate --faulty
-python substations/substation_client.py --id S3 --simulate
-```
-
-Terminal 4 — (Optional) Streamlit analytics dashboard:
-```bash
-streamlit run dashboard/app.py
-```
-
----
-
-**URLs after starting:**
-
-| Service | URL |
-|---|---|
-| React Dashboard | http://localhost:5173 |
-| FastAPI Swagger UI | http://localhost:8000/docs |
-| FastAPI ReDoc | http://localhost:8000/redoc |
-| Streamlit Dashboard | http://localhost:8501 |
-| Raw API health check | http://localhost:8000/ |
-
----
-
-### B. Distributed Multi-Device Setup
-
-Run the AI server on one laptop and connect multiple substation laptops over your local network.
+**S1, S2, S3 are substation IDs** — labels you assign to each device. The actual data comes from whichever hardware you connect.
 
 ```mermaid
-graph TD
-    subgraph SERVER_LAPTOP["🖥️ Server Laptop (192.168.1.100)"]
-        SRV["AI Server\nport 9999 (TCP)\nport 8000 (API)\nport 5173 (React)"]
+graph LR
+    subgraph PHONE [Android Phone via ADB]
+        P1[Battery Voltage mV] -->|÷1000 then scale\n3.3-4.2V → 200-245V| V[voltage field]
+        P2[Battery Temperature\ndecidegrees] -->|÷10| T[temperature field]
+        P3[Battery Level %] --> L[load_percentage field]
+        P4[CPU Usage %] -->|map 0-100% → 10-20A| C[current field]
+        P5[Charging State] -->|AC=1.5 USB=3.0 Off=5.5| H[harmonic_5th field]
     end
 
-    subgraph SUB1["💻 Substation Laptop 1"]
-        C1["substation_client.py\n--id S1 --host 192.168.1.100"]
+    subgraph ARDUINO [Arduino/ESP32 via USB Serial]
+        A1[Voltage sensor] --> V2[voltage field]
+        A2[Current sensor] --> C2[current field]
+        A3[Temperature sensor] --> T2[temperature field]
+        A4[Harmonic analyzer] --> H2[harmonic_5th field]
+        A5[Load meter] --> L2[load_percentage field]
     end
 
-    subgraph SUB2["💻 Substation Laptop 2"]
-        C2["substation_client.py\n--id S2 --host 192.168.1.100\n--source adb"]
+    subgraph SIM [Simulation Mode]
+        S1[Gaussian noise\n+ sinusoidal drift] --> ALL[All 5 fields\nrealistic ranges]
     end
-
-    subgraph SUB3["💻 Substation Laptop 3"]
-        C3["substation_client.py\n--id S3 --host 192.168.1.100\n--simulate"]
-    end
-
-    C1 -->|TCP 9999| SRV
-    C2 -->|TCP 9999| SRV
-    C3 -->|TCP 9999| SRV
 ```
 
-**Server laptop — step by step:**
+### Normal Operating Ranges
 
-1. Find your IP address on Windows:
-   ```bash
-   ipconfig
-   # Look for "IPv4 Address" under your Wi-Fi or Ethernet adapter
-   # Example: 192.168.1.100
-   ```
-2. Start the AI server:
-   ```bash
-   python api/main.py
-   ```
-3. Start the React dashboard:
-   ```bash
-   cd dashboard/frontend && npm run dev
-   ```
-4. Make sure Windows Firewall allows inbound connections on ports **9999** and **8000**.
-
-**Each substation laptop — step by step:**
-
-1. Clone the repo and install Python dependencies (Steps 1–2 from Installation).
-2. Edit `dashboard/frontend/.env` and set:
-   ```dotenv
-   VITE_API_BASE_URL=http://192.168.1.100:8000
-   ```
-3. Run the substation client pointing at the server IP:
-   ```bash
-   # USB sensor:
-   python substations/substation_client.py --id S2 --host 192.168.1.100
-
-   # Android phone:
-   python substations/substation_client.py --id S2 --host 192.168.1.100 --source adb
-
-   # Simulation:
-   python substations/substation_client.py --id S2 --host 192.168.1.100 --simulate
-   ```
+| Metric | Healthy Range | Warning | Critical |
+|---|---|---|---|
+| Voltage | 220–240 V | < 210V or > 245V | < 200V or > 250V |
+| Current | 10–20 A | > 18A | > 22A |
+| Temperature | 50–75 °C | > 75°C | > 85°C |
+| Harmonics | 1–5 % | > 5% | > 8% |
+| Load | 20–60 % | > 60% | > 80% |
 
 ---
 
-## 8. Telemetry Packet Format
+## 5. Communication Protocol
 
-Every substation client sends a newline-terminated JSON packet to the socket server every ~1.5 seconds.
+```mermaid
+sequenceDiagram
+    participant SUB as Substation Client
+    participant SRV as AI Server (port 9999)
+    participant API as FastAPI (port 8000)
+    participant DASH as React Dashboard
 
-**Example packet:**
+    SUB->>SRV: TCP Connect
+    SRV-->>SUB: Connection accepted
+
+    loop Every 1.5 seconds
+        SUB->>SRV: JSON packet + newline
+        Note over SRV: Full AI pipeline runs
+        SRV-->>SRV: Update health_data, fault_reports, predictions
+    end
+
+    loop Every 1.5 seconds
+        DASH->>API: GET /state
+        API-->>DASH: telemetry + health + load + alerts + predictions
+        DASH-->>DASH: Update all charts and cards
+    end
+
+    Note over SUB,SRV: On disconnect: state cleaned up automatically
+```
+
+### Packet Format
+
 ```json
 {
-  "substation_id": "S1",
-  "timestamp": "2024-01-15T10:30:45.123456",
-  "voltage": 231.5,
-  "current": 14.8,
-  "temperature": 62.3,
-  "harmonic_5th": 2.4,
-  "load_percentage": 47.2
+  "substation_id":   "S1",
+  "timestamp":       "2026-05-19T22:00:00.000000",
+  "voltage":         230.5,
+  "current":         14.2,
+  "temperature":     62.1,
+  "harmonic_5th":    3.5,
+  "load_percentage": 35.0
 }
 ```
 
-**Field reference:**
-
-| Field | Type | Unit | Normal Range | Description |
-|---|---|---|---|---|
-| `substation_id` | string | — | S1, S2, S3… | Unique identifier for the substation |
-| `timestamp` | string | ISO 8601 | — | UTC timestamp of the reading |
-| `voltage` | float | Volts (V) | 220–240 V | Line voltage at the substation |
-| `current` | float | Amperes (A) | 10–20 A | Current draw |
-| `temperature` | float | Celsius (°C) | 50–75 °C | Equipment/transformer temperature |
-| `harmonic_5th` | float | % THD | 1–5 % | 5th harmonic distortion (IEEE 519) |
-| `load_percentage` | float | % | 20–60 % | Load as a percentage of rated capacity |
+Fields may be `null` — the AI pipeline handles partial sensor data gracefully.
 
 ---
 
-## 9. Health Score System
+## 6. AI Pipeline
 
-Each substation receives a health score from **0** (failed) to **100** (perfect) on every telemetry packet.
-
-### Formula
-
-```
-score = 100.0
-score -= temperature_penalty    (if temp > 85°C)
-score -= voltage_penalty        (if voltage < 200V or > 250V)
-score -= harmonic_penalty       (if harmonic_5th > 8%)
-score -= load_penalty           (if load_percentage > 80%)
-score -= anomaly_penalty        (if IsolationForest flags anomaly)
-score = clamp(score, 0, 100)
-```
-
-### Penalty Table
-
-| Condition | Penalty |
-|---|---|
-| Temperature > 85°C | `(temp - 85) × 1.5` per degree |
-| Voltage < 200V or > 250V | −20 points flat |
-| Harmonic distortion > 8% | `(harmonic - 8) × 3`, max −30 |
-| Load percentage > 80% | `(load - 80) × 0.5` per % |
-| IsolationForest anomaly detected | −30 points flat |
-
-### Status Classification
-
-| Score Range | Status | Meaning |
-|---|---|---|
-| 80–100 | ✅ **Healthy** | Normal operation |
-| 50–79 | ⚠️ **Warning** | Degraded — monitor closely |
-| 0–49 | 🔴 **Critical** | Fault condition — load reduced, alerts fired |
-
-### Health Score Flowchart
+Every telemetry packet triggers this full pipeline in under 50ms:
 
 ```mermaid
 flowchart TD
-    A["Receive telemetry packet"] --> B["Start: score = 100"]
-    B --> C{"temp > 85°C?"}
-    C -->|Yes| D["score -= (temp-85) × 1.5"]
-    C -->|No| E{"voltage out of 200–250V?"}
-    D --> E
-    E -->|Yes| F["score -= 20"]
-    E -->|No| G{"harmonic > 8%?"}
-    F --> G
-    G -->|Yes| H["score -= min((h-8)×3, 30)"]
-    G -->|No| I{"load > 80%?"}
-    H --> I
-    I -->|Yes| J["score -= (load-80) × 0.5"]
-    I -->|No| K{"IsolationForest anomaly?"}
-    J --> K
-    K -->|Yes| L["score -= 30"]
-    K -->|No| M["Clamp to 0–100"]
-    L --> M
-    M --> N{"score ≥ 80?"}
-    N -->|Yes| O["✅ Healthy"]
-    N -->|No| P{"score ≥ 50?"}
-    P -->|Yes| Q["⚠️ Warning"]
-    P -->|No| R["🔴 Critical"]
+    PKT[Telemetry Packet\nvoltage, current, temp, harmonic, load] --> V
+
+    V[Validate Fields\nshared/utils.py] -->|valid| STORE
+    V -->|invalid| DROP[Drop packet]
+
+    STORE[Store in TelemetryManager\nrolling 20-packet history] --> FE
+
+    FE[Feature Engineering\nfeature_pipeline.py\n42 features total] --> IF
+
+    subgraph FEATURES [42 Features Extracted]
+        F1[Statistical x30\nmean, std, min, max, range, roc\nper 5 metrics]
+        F2[Harmonic x3\nTHD, power factor, severity]
+        F3[Phase Unbalance x2\nNEMA %, instability]
+        F4[FFT x2\ndominant freq, spectral entropy]
+    end
+
+    FE -.-> FEATURES
+
+    IF[IsolationForest\nml_models/isolation_forest.py\nPoint anomaly] --> LSTM
+
+    LSTM[LSTM Detector\nml_models/lstm_anomaly_detector.py\nSequence anomaly\nrequires 10 readings] --> COMBINE
+
+    COMBINE{Either model\nflags anomaly?} -->|Yes| ANOMALY[is_anomaly = True]
+    COMBINE -->|No| NORMAL[is_anomaly = False]
+
+    ANOMALY --> SCORE
+    NORMAL --> SCORE
+
+    SCORE[Health Score\nml/health_score.py\n100 minus penalties] --> FAULT
+
+    FAULT[Fault Isolation\nsmart_grid/fault_isolation.py\n6 rule-based fault types] --> PRED
+
+    PRED[Overload Predictor\nRandomForest\nrequires 10 readings] --> FAIL
+
+    FAIL[Failure Predictor\nLogisticRegression\nrequires 20 readings] --> REDIST
+
+    REDIST[RedistributionEngine\nml_models/redistribution_engine.py\nSmooth load transition] --> HEAL
+
+    HEAL[SelfHealingEngine\nsmart_grid/self_healing_engine.py\nBackground thread] --> ALERT
+
+    ALERT[AlertManager\nalerts/alert_manager.py\n30s cooldown] --> DONE[State updated\nAPI serves /state]
 ```
 
----
+### Step-by-Step Explanation
 
-## 10. Fault Types
+**Step 1 — Validate & Store**
+Every packet is checked for required fields. Valid packets go into `TelemetryManager` which keeps the latest reading and a 20-packet rolling history per substation.
 
-The fault isolation engine checks every telemetry packet against 6 rule-based fault conditions.
+**Step 2 — Feature Engineering (42 features)**
+Raw 5 values are expanded to 42 features:
+- 30 statistical features (mean, std, min, max, range, rate-of-change × 5 metrics)
+- 3 harmonic features (THD approximation, power factor estimate, severity index)
+- 2 phase unbalance features (NEMA unbalance %, voltage instability coefficient)
+- 2 FFT features (dominant frequency magnitude, spectral entropy)
 
-| Fault Name | Trigger Condition | Severity | Description |
-|---|---|---|---|
-| **Overheat** | `temperature > 85°C` (TEMP_MAX + 10) | 🔴 HIGH | Transformer/equipment temperature exceeds safe operating limit |
-| **Voltage Sag** | `voltage < 205V` (VOLTAGE_MIN − 15) | 🔴 HIGH | Voltage dropped significantly below nominal range |
-| **Voltage Surge** | `voltage > 255V` (VOLTAGE_MAX + 15) | 🟡 MEDIUM | Voltage exceeded safe upper limit |
-| **Overload** | `load_percentage > 80%` (LOAD_MAX + 20) | 🔴 HIGH | Load critically high — risk of equipment damage |
-| **Harmonic Distortion** | `harmonic_5th > 8%` (HARMONIC_MAX + 3) | 🟡 MEDIUM | 5th harmonic distortion exceeds IEEE 519 limits |
-| **Overcurrent** | `current > 25A` (CURRENT_MAX + 5) | 🔴 HIGH | Current draw exceeds rated capacity |
+**Step 3 — IsolationForest (point anomaly)**
+Trained on 500 synthetic normal samples at startup. Saved to disk, reloaded on restart. Phone battery voltage (< 10V) is auto-neutralised to prevent false positives.
 
-Multiple faults can be active simultaneously. The `highest_severity` field in the fault report reflects the worst active fault.
+**Step 4 — LSTM Detector (sequence anomaly)**
+One detector per substation. Looks at the last 10 readings as a sequence. Catches gradual drift that looks normal point-by-point but is anomalous as a trend. Combined with IsolationForest: anomaly if either model flags it.
 
----
+**Step 5 — Health Score**
+Starts at 100, applies rule-based penalties. −30 if ML anomaly detected. Score determines status: Healthy (80–100), Warning (50–79), Critical (0–49).
 
-## 11. Load Redistribution
+**Step 6 — Fault Isolation**
+Six rule-based fault types: Overheat, Voltage Sag, Voltage Surge, Overload, Harmonic Distortion, Overcurrent. Multiple faults can fire simultaneously.
 
-When a substation goes Critical, the load balancer shifts its work to healthy substations.
+**Step 7 — Overload Prediction**
+RandomForest trained on 1500 synthetic sequences. Predicts overload risk in the next 5 readings. Triggers a WARNING alert if probability > 75%.
 
-### Before / After Example
+**Step 8 — Transformer Failure Prediction**
+Logistic Regression trained on 2000 sequences. Predicts 24-hour failure probability from 17 stress features (thermal cycles, voltage sag count, harmonic stress, etc.).
 
-**Scenario:** S2 goes Critical (health score drops below 50).
+**Step 9 — Load Redistribution**
+`RedistributionEngine` detects status changes, calls `LoadOptimizer` for optimal distribution, applies it gradually over 10 seconds (5 steps × 2s) with 15-second cooldown.
 
-| Substation | Before | After |
-|---|---|---|
-| S1 (Healthy) | 33.3% | 45.0% |
-| S2 (Critical) | 33.3% | **10.0%** |
-| S3 (Healthy) | 33.3% | 45.0% |
+**Step 10 — Self-Healing**
+Background thread checks every 10 seconds. When health rises above 70, load is restored +5% per cycle until the substation reaches its fair share.
 
-**Formula:**
-- Critical substations receive a safe floor of **10%**
-- Remaining load `(100 - 10 × n_critical)` is split equally among healthy substations
-
-### Load Redistribution Diagram
-
-```mermaid
-flowchart TD
-    A["New telemetry received"] --> B["Classify each substation:\nHealthy / Critical"]
-    B --> C{"Any Critical\nsubstations?"}
-    C -->|No| D["Equal split:\n100% ÷ n_active"]
-    C -->|Yes| E["Assign Critical subs:\n10% each (safe floor)"]
-    E --> F["Remaining load =\n100% − (10% × n_critical)"]
-    F --> G["Distribute remaining\nequally to Healthy subs"]
-    G --> H["Update load_distribution dict"]
-    D --> H
-    H --> I["Self-Healing Engine\nmonitors for recovery"]
-```
-
----
-
-## 12. Self-Healing Engine
-
-The self-healing engine runs in a background thread and gradually restores load to substations that have recovered from a critical state.
-
-### How it works
-
-1. Every telemetry packet calls `notify_health(sub_id, health_score, risk_level)`.
-2. If a substation is **Critical**, it is marked `recovering = False`.
-3. When health rises above **70** (RECOVERY_THRESHOLD), the substation is marked `recovering = True`.
-4. Every **10 seconds** (HEALING_INTERVAL), the healing loop runs:
-   - For each recovering substation, load is increased by **5%** (RECOVERY_STEP).
-   - This continues until the substation reaches its fair share (`100% ÷ n_active`).
-   - Once fully restored, `recovering` is set back to `False`.
-5. If health drops again during recovery, recovery is paused immediately.
-
-### Self-Healing State Diagram
-
-```mermaid
-stateDiagram-v2
-    [*] --> Normal : System starts
-
-    Normal --> Critical : health_score < 50\n(anomaly + penalties)
-    Critical --> Recovering : health_score ≥ 70\n(RECOVERY_THRESHOLD)
-    Recovering --> Normal : load restored to\nfair share (100÷n)
-    Recovering --> Critical : health drops again\nduring recovery
-
-    Normal : ✅ Normal\nFull load share\nNo healing needed
-    Critical : 🔴 Critical\nLoad reduced to 10%\nAlerts firing
-    Recovering : 🔄 Recovering\nLoad +5% every 10s\nMonitored closely
-```
-
----
-
-## 13. API Reference
-
-The FastAPI backend exposes 21 endpoints. Interactive docs are available at `http://localhost:8000/docs`.
-
-### System Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/` | Health check — returns service name and version |
-| `GET` | `/state` | Full live grid state snapshot (polled by dashboards) |
-| `GET` | `/summary` | System-wide health summary |
-
-### Telemetry Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/telemetry/` | Latest telemetry for all connected substations |
-| `GET` | `/telemetry/{sub_id}` | Latest telemetry for a specific substation |
-| `GET` | `/telemetry/{sub_id}/history` | Rolling telemetry history (default last 20 readings) |
-
-### Anomaly & Health Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/anomaly/health` | Health scores for all substations |
-| `GET` | `/anomaly/health/{sub_id}` | Health score and anomaly status for one substation |
-| `GET` | `/anomaly/summary` | Overall system health summary |
-| `GET` | `/anomaly/faults` | Fault isolation reports for all substations |
-| `GET` | `/anomaly/faults/{sub_id}` | Fault report for a specific substation |
-
-### Load Balancing Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/load/distribution` | Current load % for all substations |
-| `GET` | `/load/substations` | List of currently connected substations |
-| `POST` | `/load/rebalance` | Manually trigger a load rebalance |
-
-### Prediction & Explainability Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/predict/anomaly` | Run anomaly detection on a submitted packet |
-| `POST` | `/predict/root-cause` | Run root cause analysis on a submitted packet |
-| `GET` | `/predict/model-info` | Active ML model type, training status, features |
-
-### Alert Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/alerts` | All recent alerts (default last 20) |
-| `GET` | `/alerts/{sub_id}` | Alerts for a specific substation |
-| `DELETE` | `/alerts` | Clear all alert history |
-
-### USB Device Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/usb/status` | Connected COM ports + active substations |
-| `GET` | `/usb/ports` | List all available COM/serial ports |
-
----
-
-### Example curl commands
-
-**Get full grid state:**
-```bash
-curl http://localhost:8000/state
-```
-
-**Get health scores:**
-```bash
-curl http://localhost:8000/anomaly/health
-```
-
-**Get load distribution:**
-```bash
-curl http://localhost:8000/load/distribution
-```
-
-**Manually trigger rebalance:**
-```bash
-curl -X POST http://localhost:8000/load/rebalance
-```
-
-**Run anomaly detection on a custom packet:**
-```bash
-curl -X POST http://localhost:8000/predict/anomaly \
-  -H "Content-Type: application/json" \
-  -d '{"voltage": 195.0, "current": 22.0, "temperature": 95.0, "harmonic_5th": 9.5, "load_percentage": 88.0}'
-```
-
-**Get recent alerts:**
-```bash
-curl "http://localhost:8000/alerts?limit=10"
-```
-
-**Clear all alerts:**
-```bash
-curl -X DELETE http://localhost:8000/alerts
-```
-
----
-
-## 14. Dashboard Guide
-
-### A. React Dashboard — `http://localhost:5173`
-
-The React dashboard is the primary live monitoring interface. It polls `GET /state` every 1.5 seconds and updates all panels in real time.
-
-**Overview Tab**
-
-The main landing view. Shows:
-- A **SystemBanner** at the top with overall grid status (Healthy / Warning / Critical) and the count of active substations.
-- A **SubstationCard** for each connected substation displaying:
-  - Health score (0–100) with colour coding (green / amber / red)
-  - Current voltage, current, temperature, harmonic distortion, and load %
-  - Anomaly flag and active fault names
-  - Data source badge (USB / ADB / Simulation)
-
-**Live Trends Tab**
-
-- **LiveChart** component renders a rolling time-series chart for each substation.
-- Plots voltage, temperature, and load percentage over the last 20 readings.
-- Updates automatically as new telemetry arrives.
-
-**Load Balance Tab**
-
-- **LoadDistribution** component shows a bar chart of current load % per substation.
-- Highlights substations that have been reduced due to a critical state.
-- Shows the target fair-share line for reference.
-
-**Alerts Tab**
-
-- **AlertFeed** component lists all recent alerts in reverse chronological order.
-- Each alert shows: timestamp, substation ID, fault type, severity, and message.
-- A "Clear Alerts" button calls `DELETE /alerts`.
-
-**USB Device Panel**
-
-- **UsbStatus** component (sidebar or footer) shows all detected COM ports.
-- Indicates which ports are actively streaming and which substation they map to.
-- Useful for confirming your hardware is connected before starting a session.
-
----
-
-### B. Streamlit Dashboard — `http://localhost:8501`
-
-The Streamlit dashboard (`dashboard/app.py`) provides an analytics-focused view. It polls `GET /state` every 1.5 seconds.
-
-**Features:**
-- Full grid state table with all substation metrics
-- Health score gauges per substation
-- Load distribution bar chart
-- Alert history table
-- Fault report summary
-- Auto-refresh toggle
-
-**Start it:**
-```bash
-streamlit run dashboard/app.py
-```
-
----
-
-## 15. Alert Channels
-
-Alerts are fired by `AlertManager` when a substation enters Critical state. A **30-second cooldown** (ALERT_COOLDOWN_SEC) prevents alert spam for the same substation.
-
-Configure alert channels in your `.env` file:
-
-### Email (Gmail SMTP)
-
-```dotenv
-ALERT_EMAIL_FROM=your-email@gmail.com
-ALERT_EMAIL_TO=recipient@example.com
-ALERT_EMAIL_PASSWORD=your-app-password
-ALERT_SMTP_HOST=smtp.gmail.com
-ALERT_SMTP_PORT=587
-```
-
-> Use a Gmail **App Password** (not your account password). Generate one at: Google Account → Security → 2-Step Verification → App Passwords.
-
-### Slack
-
-```dotenv
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T.../B.../...
-```
-
-Create an Incoming Webhook in your Slack workspace: Slack API → Your Apps → Incoming Webhooks → Add New Webhook.
-
-### SMS via Twilio
-
-```dotenv
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=your_auth_token
-TWILIO_FROM_NUMBER=+1234567890
-TWILIO_TO_NUMBER=+0987654321
-```
-
-Sign up at [twilio.com](https://twilio.com) and get a free trial number.
-
-> All alert channels are **optional**. Leave the values blank to disable that channel. The system runs fine with no alert channels configured — alerts are still stored in memory and visible in the dashboard.
-
----
-
-## 16. Project Structure
-
-```
-industrial-smart-grid-ai/
-│
-├── .env                          # Environment variables (copy and configure)
-├── .gitignore
-├── docker-compose.yml            # Docker multi-service orchestration
-├── Dockerfile.backend            # Backend container build
-├── Dockerfile.frontend           # Frontend container build
-├── requirements.txt              # Python dependencies
-├── start_all.py                  # Convenience script to start all services
-├── list_usb_ports.py             # Utility: list available COM ports
-├── setup_adb.py                  # Utility: verify/setup ADB
-├── scaffold_project.py           # Project scaffolding helper
-│
-├── alerts/                       # Alert delivery modules
-│   ├── alert_manager.py          # Orchestrates all alert channels + cooldown logic
-│   ├── critical_shutdown.py      # Emergency shutdown handler
-│   ├── email_alert.py            # SMTP email alerts
-│   ├── slack_alert.py            # Slack webhook alerts
-│   └── sms_alert.py              # Twilio SMS alerts
-│
-├── api/                          # FastAPI REST backend
-│   ├── main.py                   # App factory, router registration, socket server startup
-│   ├── routes/
-│   │   ├── anomaly_routes.py     # /anomaly/* endpoints
-│   │   ├── load_balancing_routes.py  # /load/* endpoints
-│   │   ├── prediction_routes.py  # /predict/* endpoints
-│   │   ├── telemetry_routes.py   # /telemetry/* endpoints
-│   │   └── usb_routes.py         # /usb/* endpoints
-│   ├── schemas/
-│   │   ├── fault_schema.py       # Pydantic fault report schema
-│   │   ├── response_schema.py    # Generic API response schemas
-│   │   └── telemetry_schema.py   # Telemetry packet schema
-│   └── services/
-│       ├── alert_service.py      # Alert retrieval and management
-│       ├── prediction_service.py # On-demand ML inference
-│       └── smart_grid_service.py # Grid state aggregation for API
-│
-├── dashboard/
-│   ├── app.py                    # Streamlit analytics dashboard
-│   ├── grafana/dashboards/       # Grafana dashboard JSON (optional)
-│   └── frontend/                 # React + Vite + Tailwind dashboard
-│       ├── src/
-│       │   ├── App.jsx           # Root component, tab routing
-│       │   ├── components/
-│       │   │   ├── AlertFeed.jsx       # Alert history list
-│       │   │   ├── LiveChart.jsx       # Rolling time-series chart
-│       │   │   ├── LoadDistribution.jsx # Load balance bar chart
-│       │   │   ├── SubstationCard.jsx  # Per-substation status card
-│       │   │   ├── SystemBanner.jsx    # Top-level grid status banner
-│       │   │   └── UsbStatus.jsx       # USB device connection panel
-│       │   └── main.jsx          # React entry point
-│       ├── package.json
-│       └── vite.config.js
-│
-├── explainability/               # ML explainability
-│   ├── feature_importance.py     # Feature importance extraction
-│   ├── root_cause_engine.py      # Root cause analysis (SHAP + rules)
-│   └── shap_explainer.py         # SHAP value computation
-│
-├── feature_engineering/          # Signal processing & feature extraction
-│   ├── feature_pipeline.py       # Main pipeline orchestrator
-│   ├── fft_analysis.py           # Fast Fourier Transform analysis
-│   ├── harmonic_analysis.py      # Harmonic distortion analysis
-│   ├── phase_unbalance.py        # Phase unbalance detection
-│   └── statistical_features.py  # Rolling mean, std, rate-of-change
-│
-├── ml/                           # Machine learning models
-│   ├── anomaly_detector.py       # IsolationForest wrapper (train + predict)
-│   └── health_score.py           # Health score calculator
-│
-├── ml_models/                    # Saved model artefacts
-│   ├── anomaly_detection/
-│   ├── load_balancing/
-│   ├── prediction/
-│   └── saved_models/             # Serialised .pkl / .h5 files
-│
-├── monitoring/                   # Observability
-│   ├── logging/
-│   ├── prometheus/               # Prometheus metrics config
-│   └── metrics_collector.py      # Custom metrics collection
-│
-├── notebooks/                    # Jupyter notebooks
-│   ├── anomaly_detection_training.ipynb
-│   ├── exploratory_analysis.ipynb
-│   ├── smart_grid_simulation.ipynb
-│   └── waveform_analysis.ipynb
-│
-├── platform-tools/               # Bundled Android ADB binaries (Windows)
-│   └── adb.exe
-│
-├── sensors/                      # Sensor simulation modules
-│   ├── current_sensor.py
-│   ├── sensor_simulator.py
-│   ├── thermal_sensor.py
-│   ├── vibration_sensor.py
-│   └── voltage_sensor.py
-│
-├── server/                       # TCP socket server
-│   ├── connection_handler.py     # Per-client connection handler
-│   ├── socket_server.py          # Main SmartGridSocketServer class
-│   └── telemetry_manager.py      # Rolling history buffer per substation
-│
-├── shared/                       # Shared utilities
-│   ├── config.py                 # All tuneable parameters (single source of truth)
-│   ├── schemas.py                # Shared data schemas
-│   └── utils.py                  # Logger factory and helpers
-│
-├── smart_grid/                   # Core grid intelligence
-│   ├── fault_isolation.py        # 6-rule fault classifier
-│   ├── load_balancer.py          # Load redistribution algorithm
-│   ├── load_transfer_controller.py  # Load transfer execution
-│   ├── self_healing_engine.py    # Gradual load recovery engine
-│   ├── smart_relay_controller.py # Relay switching logic
-│   └── substation_manager.py     # Substation lifecycle management
-│
-├── streaming/                    # Stream processing (Kafka/Spark)
-│   ├── fault_event_processor.py
-│   ├── spark_streaming.py
-│   ├── stream_aggregator.py
-│   └── window_processing.py
-│
-├── substations/                  # Substation client implementations
-│   ├── adb_substation_client.py  # Android phone via ADB
-│   ├── fault_simulator.py        # Fault injection for simulation
-│   ├── substation_client.py      # Main entry point (routes to USB/ADB/sim)
-│   ├── telemetry_generator.py    # Synthetic telemetry generator
-│   ├── universal_hw_client.py    # Universal hardware client
-│   └── usb_substation_client.py  # Arduino/ESP32 via USB serial
-│
-├── database/                     # Database layer
-│   ├── db_manager.py             # Database connection manager
-│   ├── schema.sql                # SQL schema
-│   ├── influxdb/                 # InfluxDB time-series config
-│   └── timescaledb/              # TimescaleDB config
-│
-├── deployment/                   # Deployment configs
-│   ├── aws/                      # AWS deployment scripts
-│   ├── docker/                   # Docker configs
-│   ├── kubernetes/               # K8s manifests
-│   └── terraform/                # Infrastructure as code
-│
-└── testing/                      # Test suites
-    ├── integration_tests/
-    ├── load_tests/
-    ├── streaming_tests/
-    └── unit_tests/
-```
-
----
-
-## 17. Configuration Reference
-
-All tuneable parameters live in `shared/config.py`. Change a value once and it applies everywhere.
-
-| Key | Default | Description |
-|---|---|---|
-| `SERVER_HOST` | `"0.0.0.0"` | Bind address for the TCP socket server |
-| `SERVER_PORT` | `9999` | TCP port for telemetry streaming |
-| `API_HOST` | `"0.0.0.0"` | FastAPI bind address |
-| `API_PORT` | `8000` | FastAPI HTTP port |
-| `DEFAULT_SUBSTATIONS` | `["S1","S2","S3"]` | Default substation IDs |
-| `TELEMETRY_INTERVAL` | `1.5` | Seconds between telemetry packets |
-| `VOLTAGE_MIN` | `220.0` | Normal lower voltage bound (V) |
-| `VOLTAGE_MAX` | `240.0` | Normal upper voltage bound (V) |
-| `CURRENT_MIN` | `10.0` | Normal lower current bound (A) |
-| `CURRENT_MAX` | `20.0` | Normal upper current bound (A) |
-| `TEMP_MIN` | `50.0` | Normal lower temperature bound (°C) |
-| `TEMP_MAX` | `75.0` | Normal upper temperature bound (°C) |
-| `HARMONIC_MIN` | `1.0` | Normal lower harmonic distortion (%) |
-| `HARMONIC_MAX` | `5.0` | Normal upper harmonic distortion (%) |
-| `LOAD_MIN` | `20.0` | Normal lower load bound (%) |
-| `LOAD_MAX` | `60.0` | Normal upper load bound (%) |
-| `FAULT_VOLTAGE_LOW` | `170.0` | Voltage sag fault trigger (V) |
-| `FAULT_VOLTAGE_HIGH` | `190.0` | Voltage surge fault trigger (V) |
-| `FAULT_TEMP_HIGH` | `100.0` | Overheat fault trigger (°C) |
-| `FAULT_HARMONIC_HIGH` | `10.0` | Harmonic fault trigger (%) |
-| `FAULT_LOAD_HIGH` | `85.0` | Overload fault trigger (%) |
-| `HEALTH_HEALTHY_MIN` | `80` | Minimum score for Healthy status |
-| `HEALTH_WARNING_MIN` | `50` | Minimum score for Warning status |
-| `CRITICAL_LOAD_FLOOR` | `10.0` | Minimum load assigned to critical substation (%) |
-| `DEFAULT_LOAD_SHARE` | `33.3` | Equal load share when all substations healthy (%) |
-| `RECOVERY_THRESHOLD` | `70` | Health score above which recovery begins |
-| `RECOVERY_STEP` | `5.0` | Load % restored per healing cycle |
-| `HEALING_INTERVAL` | `10` | Seconds between self-healing checks |
-| `MAX_ALERT_HISTORY` | `100` | Maximum alerts kept in memory |
-| `ALERT_COOLDOWN_SEC` | `30` | Minimum seconds between alerts for same substation |
-| `ISOLATION_FOREST_CONTAMINATION` | `0.1` | Expected anomaly fraction (0–0.5) |
-| `ISOLATION_FOREST_TRAINING_SAMPLES` | `500` | Packets collected before model trains |
-| `MODEL_SAVE_PATH` | `"ml_models/saved_models"` | Directory for serialised model files |
-| `HISTORY_WINDOW` | `20` | Rolling history buffer size per substation |
-
----
-
-## 18. Docker Deployment
-
-Run the entire stack (backend + frontend) with a single command using Docker Compose.
-
-### Step 1 — Install Docker
-
-Download and install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
-
-### Step 2 — Build and start all services
-
-```bash
-cd industrial-smart-grid-ai
-docker-compose up --build
-```
-
-This builds two images and starts:
-- `backend` — FastAPI + Socket Server on ports **8000** and **9999**
-- `frontend` — React dashboard on port **5173**
-
-### Step 3 — Connect substation clients
-
-Substation clients run on separate machines (or locally) and connect to the server:
-
-```bash
-# From any machine on the same network:
-python substations/substation_client.py --id S1 --host <server-ip> --simulate
-```
-
-### Step 4 — Stop the stack
-
-```bash
-docker-compose down
-```
-
-### Environment variables for Docker
-
-Override defaults by editing `docker-compose.yml` or passing `-e` flags:
-
-```yaml
-environment:
-  - ML_MODEL_TYPE=ISOLATION_FOREST   # or LSTM_AUTOENCODER
-  - VITE_API_BASE_URL=http://192.168.1.100:8000
-```
-
-### Useful Docker commands
-
-```bash
-# View logs for the backend:
-docker-compose logs -f backend
-
-# Rebuild only the backend after code changes:
-docker-compose up --build backend
-
-# Run in detached (background) mode:
-docker-compose up -d --build
-
-# Check running containers:
-docker-compose ps
-```
+**Step 11 — Alert Dispatch**
+CRITICAL alerts trigger Email + Slack + SMS in parallel background threads. 30-second cooldown per substation prevents spam.
 
 ---

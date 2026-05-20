@@ -65,7 +65,7 @@ root_cause_engine  = RootCauseEngine()   # SHAP optional
 telemetry_routes.set_service(grid_service)
 anomaly_routes.set_services(prediction_service, grid_service)
 load_routes.set_service(grid_service)
-prediction_routes.set_services(prediction_service, root_cause_engine)
+prediction_routes.set_services(prediction_service, root_cause_engine, grid_service)
 usb_routes.set_service(grid_service)
 
 # ── Register routers ──────────────────────────────────────────────────────────

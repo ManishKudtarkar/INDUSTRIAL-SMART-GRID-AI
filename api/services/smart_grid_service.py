@@ -18,13 +18,23 @@ class SmartGridService:
 
     def get_full_state(self) -> Dict[str, Any]:
         """Return the complete grid state snapshot."""
+        # Include predictions if available
+        predictions = getattr(self._server, "predictions", {})
+
+        # Include redistribution history if available
+        redist_history = []
+        if hasattr(self._server, "redistribution_engine") and self._server.redistribution_engine:
+            redist_history = self._server.redistribution_engine.get_history(limit=5)
+
         return {
-            "telemetry":         self._server.telemetry_data,
-            "health":            self._server.health_data,
-            "load_distribution": self._server.balancer.load_distribution,
-            "alerts":            self._server.alert_manager.get_latest_alerts()[:10],
-            "fault_reports":     self._server.fault_reports,
-            "substation_count":  len(self._server.telemetry_data),
+            "telemetry":              self._server.telemetry_data,
+            "health":                 self._server.health_data,
+            "load_distribution":      self._server.balancer.load_distribution,
+            "alerts":                 self._server.alert_manager.get_latest_alerts()[:10],
+            "fault_reports":          self._server.fault_reports,
+            "predictions":            predictions,
+            "redistribution_history": redist_history,
+            "substation_count":       len(self._server.telemetry_data),
         }
 
     def get_substation_detail(self, sub_id: str) -> Dict[str, Any] | None:

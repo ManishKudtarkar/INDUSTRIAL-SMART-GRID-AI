@@ -1,25 +1,48 @@
-fastapi
-scikit-learn
-pandas
-streamlit
-uvicorn
-requests
-pydantic
-kafka-python
-kubernetes
-pyyaml
+# ── Core runtime ──────────────────────────────────────────────────────────────
+fastapi==0.136.1
+uvicorn==0.47.0
+pydantic==2.13.4
+
+# ── ML / Data ─────────────────────────────────────────────────────────────────
+numpy==2.3.5
+scikit-learn==1.8.0
+joblib==1.5.2
+pandas==3.0.3
+
+# ── Dashboard ─────────────────────────────────────────────────────────────────
+streamlit==1.57.0
+requests==2.34.2
+
+# ── Hardware / Serial ─────────────────────────────────────────────────────────
+pyserial==3.5
+
+# ── HTTP client (testing + API calls) ────────────────────────────────────────
+httpx==0.28.1
+
+# ── Explainability ────────────────────────────────────────────────────────────
+# shap requires numpy + sklearn — install separately if needed:
+# pip install shap
 shap
+
+# ── Visualisation ─────────────────────────────────────────────────────────────
 matplotlib
 seaborn
-tensorflow
-keras
-influxdb-client
-psycopg2-binary
-pymongo
-redis
+
+# ── Database (optional — only needed if DB_URL is set in .env) ───────────────
 sqlalchemy
-alembic
+psycopg2-binary
+
+# ── Messaging (optional — only needed for Kafka integration) ─────────────────
+kafka-python
+
+# ── Testing ───────────────────────────────────────────────────────────────────
 pytest
 pytest-asyncio
 pytest-cov
-httpx
+
+# ── NOTE: tensorflow/keras are NOT listed here.
+#    Python 3.14 is not yet supported by TensorFlow.
+#    The LSTM Autoencoder (ml_models/anomaly_detection/advanced_lstm_autoencoder.py)
+#    uses a numpy-only fallback automatically when TF is absent.
+#    Install TF manually on Python 3.10/3.11 if you need the full TF version:
+#    pip install tensorflow==2.15.0
