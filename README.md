@@ -428,21 +428,30 @@ flowchart LR
 stateDiagram-v2
     [*] --> Equal: All substations start equal
 
-    Equal: Equal Distribution\nS1=33% S2=33% S3=33%
+    state Equal {
+        [*] --> Normal
+        Normal: Equal Distribution\nS1=33% | S2=33% | S3=33%
+    }
 
-    Equal --> Redistributed: Any substation goes Critical
+    Equal --> Redistributed: Any substation becomes Critical
 
-    Redistributed: Redistributed\nCritical gets 10%\nHealthy share the rest\nS1=45% S2=10% S3=45%
+    state Redistributed {
+        [*] --> LoadShift
+        LoadShift: Emergency Redistribution\nCritical = 10%\nHealthy substations share remaining load\nExample:\nS1=45% | S2=10% | S3=45%
+    }
 
-    Redistributed --> Healing: Health score rises above 70
+    Redistributed --> Healing: Health score > 70
 
-    Healing: Self-Healing\nLoad restored +5% per 10s\nS2=15% then 20% then 25%...
+    state Healing {
+        [*] --> Recovery
+        Recovery: Self-Healing Mode\nRestore +5% load every 10s\n15% → 20% → 25% → ...
+    }
 
-    Healing --> Equal: Substation reaches fair share
+    Healing --> Equal: Fair distribution restored
 
-    Redistributed --> Redistributed: Another substation goes Critical
+    Redistributed --> Redistributed: Another substation becomes Critical
 
-    Healing --> Redistributed: Health drops again
+    Healing --> Redistributed: Health drops below threshold
 ```
 
 ### Load redistribution formula
