@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: linear-gradient(135deg, #0a0e1a 0%, #0f1629 100%);
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      border: 1px solid #1e2d4a;
+      overflow: hidden;
+      -webkit-app-region: drag;
+    }
+
+    .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #00d4ff;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: #4a5568;
+      margin-bottom: 32px;
+      letter-spacing: 0.5px;
+    }
+
+    .status {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+
+    .progress-bar {
+      width: 280px;
+      height: 3px;
+      background: #1e2d4a;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00d4ff, #00ff88);
+      border-radius: 2px;
+      animation: loading 2s ease-in-out infinite;
+    }
+
+    @keyframes loading {
+      0% { width: 0%; margin-left: 0; }
+      50% { width: 60%; margin-left: 20%; }
+      100% { width: 0%; margin-left: 100%; }
+    }
+
+    .version {
+      position: absolute;
+      bottom: 12px;
+      font-size: 10px;
+      color: #2d3748;
+    }
+  </style>
+</head>
+<body>
+  <div class="icon">⚡</div>
+  <h1>Smart Grid AI</h1>
+  <div class="subtitle">DISTRIBUTED AI MONITORING SYSTEM</div>
+  <div class="status">Starting AI engine...</div>
+  <div class="progress-bar">
+    <div class="progress-fill"></div>
+  </div>
+  <div class="version">v1.0.0</div>
+
+  <script>
+    const messages = [
+      'Loading ML models...',
+      'Starting anomaly detector...',
+      'Initializing socket server...',
+      'Connecting substations...',
+      'Almost ready...',
+    ]
+    let i = 0
+    const status = document.querySelector('.status')
+    setInterval(() => {
+      status.textContent = messages[i % messages.length]
+      i++
+    }, 1800)
+  </script>
+</body>
+</html>

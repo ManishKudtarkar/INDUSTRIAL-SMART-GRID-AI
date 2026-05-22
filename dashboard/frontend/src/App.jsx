@@ -15,7 +15,14 @@ import LoadDistribution from './components/LoadDistribution'
 import AlertFeed        from './components/AlertFeed'
 import UsbStatus        from './components/UsbStatus'
 
-const API          = import.meta.env.VITE_API_BASE_URL || ''
+// API base URL resolution:
+// - Electron desktop app (file://): use localhost:8000 directly
+// - Docker (nginx proxy): empty string = same origin
+// - Local dev (npm run dev): use VITE_API_BASE_URL from .env
+const isElectron = typeof window !== 'undefined' && window.location.protocol === 'file:'
+const API = isElectron
+  ? 'http://localhost:8000'
+  : (import.meta.env.VITE_API_BASE_URL || '')
 const POLL_MS      = 1500
 const HISTORY_MAX  = 60
 
