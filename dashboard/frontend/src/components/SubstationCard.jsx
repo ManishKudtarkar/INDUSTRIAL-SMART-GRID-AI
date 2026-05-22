@@ -129,8 +129,6 @@ function PhoneInfoStrip({ telemetry }) {
 
   const battPct  = telemetry?.load_percentage
   const temp     = telemetry?.temperature
-  const gridV    = voltage  // already scaled by adb client
-
   return (
     <div className="bg-grid-purple/5 border border-grid-purple/20 rounded-lg px-3 py-2">
       <div className="text-[9px] text-grid-purple font-semibold uppercase tracking-wider mb-1.5">

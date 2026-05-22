@@ -7,8 +7,8 @@ this module can:
   2. Notify all channels simultaneously
   3. (In production) send a relay trip command to the substation
 
-This is intentionally conservative — actual relay commands require
-hardware integration and are stubbed here.
+This is intentionally conservative: actual relay commands require
+site-specific hardware integration and are supplied through a callback.
 """
 import threading
 from datetime import datetime
@@ -73,7 +73,7 @@ def trigger_critical_shutdown(
         t.start()
     event["actions_taken"].append("notifications_dispatched")
 
-    # ── Hardware relay trip (stub) ─────────────────────────────────────────────
+    # ── Hardware relay trip callback ───────────────────────────────────────────
     if on_shutdown:
         try:
             on_shutdown(sub_id)

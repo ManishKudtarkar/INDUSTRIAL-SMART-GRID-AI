@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Smart Grid AI is a local-first desktop application for industrial grid telemetry, anomaly detection, alerts, and load balancing."
+    />
+    <title>Smart Grid AI - Desktop Monitoring App</title>
+    <link rel="icon" href="assets/icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Smart Grid AI home">
+        <img src="assets/icon.png" alt="" />
+        <span>Smart Grid AI</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#features">Features</a>
+        <a href="#download">Download</a>
+        <a href="#setup">Setup</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Local-first industrial monitoring</p>
+          <h1>Smart Grid AI</h1>
+          <p class="lead">
+            A downloadable desktop app for live substation telemetry, anomaly detection,
+            predictive maintenance, alerts, and load balancing on the user's own laptop.
+          </p>
+          <div class="hero-actions" id="download">
+            <a class="button primary" href="downloads/SmartGridAI-Setup.exe" download>Download for Windows</a>
+            <a class="button secondary" href="#setup">View setup notes</a>
+          </div>
+          <p class="release-note">Windows installer for the local-first Smart Grid AI desktop app.</p>
+        </div>
+      </section>
+
+      <section class="section intro">
+        <div>
+          <h2>Built for labs, plants, and demos where hardware is nearby.</h2>
+          <p>
+            The app runs the dashboard, local backend, AI models, telemetry receiver, and hardware
+            clients from one installed application. Users do not need to open a browser or run
+            terminal commands once the desktop package is complete.
+          </p>
+        </div>
+        <dl class="stats">
+          <div>
+            <dt>Local</dt>
+            <dd>data stays on the laptop</dd>
+          </div>
+          <div>
+            <dt>Realtime</dt>
+            <dd>dashboard polling every 1.5s</dd>
+          </div>
+          <div>
+            <dt>Hardware</dt>
+            <dd>USB, ADB, and simulation modes</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="section features" id="features">
+        <div class="section-heading">
+          <h2>What users get after installing</h2>
+          <p>A desktop command center for monitoring and response.</p>
+        </div>
+        <div class="feature-grid">
+          <article>
+            <h3>Live telemetry</h3>
+            <p>Track voltage, current, temperature, harmonics, and load across substations.</p>
+          </article>
+          <article>
+            <h3>AI risk scoring</h3>
+            <p>Detect anomalies, classify faults, and calculate health scores in real time.</p>
+          </article>
+          <article>
+            <h3>Load balancing</h3>
+            <p>Shift target load away from critical substations and support self-healing recovery.</p>
+          </article>
+          <article>
+            <h3>Local alerts</h3>
+            <p>Show alert history in the app, with optional email, Slack, SMS, and database storage.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section download-panel">
+        <div>
+          <h2>Recommended release flow</h2>
+          <p>
+            Build the Electron installer, upload it to your hosting provider, then update this page's
+            download link. GitHub Releases, Cloudflare Pages, Netlify, Vercel, or an S3 bucket all work.
+          </p>
+        </div>
+        <a class="button primary" href="downloads/SmartGridAI-Setup.exe" download>Download installer</a>
+      </section>
+
+      <section class="section setup" id="setup">
+        <div class="section-heading">
+          <h2>Deployment checklist</h2>
+          <p>Use this website as the public download surface while the app remains local-first.</p>
+        </div>
+        <ol>
+          <li>Package the desktop app from `desktop/` with Electron Builder.</li>
+          <li>Place the generated `.exe` in `landing/downloads/` or upload it to release hosting.</li>
+          <li>Update the download links in `landing/index.html`.</li>
+          <li>Deploy the `landing/` folder as a static website.</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>Smart Grid AI</span>
+      <span>Desktop app download site</span>
+    </footer>
+  </body>
+</html>

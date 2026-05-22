@@ -13,8 +13,7 @@
   },
   "dependencies": {
     "electron-log": "^5.2.0",
-    "electron-store": "^8.2.0",
-    "node-pty": "^1.0.0"
+    "electron-store": "^8.2.0"
   },
   "devDependencies": {
     "electron": "^33.0.0",
@@ -45,6 +44,11 @@
           "!dashboard/frontend/node_modules/**",
           "!.git/**",
           "!*.bat",
+          "!.pytest_cache/**",
+          "!**/.pytest_cache/**",
+          "!testing/**",
+          "!landing/**",
+          "!desktop/dist/**",
           "!__pycache__/**",
           "!**/__pycache__/**",
           "!*.pyc"

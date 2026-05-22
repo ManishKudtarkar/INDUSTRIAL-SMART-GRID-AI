@@ -5,7 +5,7 @@
  * Polls /usb/status every 3s for USB device info.
  * Maintains rolling 60-point history for trend charts.
  */
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 
 import SystemBanner     from './components/SystemBanner'
@@ -87,9 +87,12 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    fetchState()
+    const initialFetch = setTimeout(fetchState, 0)
     const id = setInterval(fetchState, POLL_MS)
-    return () => clearInterval(id)
+    return () => {
+      clearTimeout(initialFetch)
+      clearInterval(id)
+    }
   }, [fetchState])
 
   const telemetry  = gridState?.telemetry       || {}

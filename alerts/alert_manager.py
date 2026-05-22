@@ -14,9 +14,10 @@ logger = get_logger(__name__)
 
 
 class AlertManager:
-    def __init__(self):
+    def __init__(self, db_manager=None):
         self.active_alerts: List[Dict[str, Any]] = []
         self._lock = threading.Lock()
+        self._db = db_manager
 
     # ── Write ─────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,9 @@ class AlertManager:
             self.active_alerts.append(alert)
             if len(self.active_alerts) > MAX_ALERT_HISTORY:
                 self.active_alerts.pop(0)
+
+        if self._db:
+            self._db.save_alert(alert)
 
         # Console log
         icons = {"CRITICAL": "🚨", "WARNING": "⚠️", "INFO": "ℹ️"}

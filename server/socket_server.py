@@ -31,6 +31,7 @@ from smart_grid.load_balancer import LoadBalancer
 from smart_grid.fault_isolation import isolate_faults
 from smart_grid.self_healing_engine import SelfHealingEngine
 from alerts.alert_manager import AlertManager
+from database.db_manager import DatabaseManager
 from server.connection_handler import ConnectionHandler
 from server.telemetry_manager import TelemetryManager
 from shared.utils import get_logger
@@ -82,7 +83,8 @@ class SmartGridSocketServer:
         self.telemetry_manager = TelemetryManager()
         self.anomaly_detector  = AnomalyDetector()
         self.balancer          = LoadBalancer()
-        self.alert_manager     = AlertManager()
+        self.db_manager        = DatabaseManager()
+        self.alert_manager     = AlertManager(self.db_manager)
         self.healer            = SelfHealingEngine(self.balancer)
 
         # ── Advanced ML components ────────────────────────────────────────────
@@ -186,6 +188,7 @@ class SmartGridSocketServer:
         with self._lock:
             self.telemetry_data[sub_id] = packet
         self.telemetry_manager.update(packet)
+        self.db_manager.save_telemetry(packet)
 
         # 2. IsolationForest anomaly detection (point-based)
         anomaly_result = self.anomaly_detector.detect_with_score(packet)
@@ -214,6 +217,7 @@ class SmartGridSocketServer:
         }
         with self._lock:
             self.health_data[sub_id] = health_record
+        self.db_manager.save_health_score(sub_id, health_record)
 
         # 5. Fault isolation
         fault_report = isolate_faults(packet)
@@ -252,6 +256,7 @@ class SmartGridSocketServer:
         else:
             active_subs = list(self.telemetry_data.keys())
             self.balancer.redistribute(active_subs, self.health_data)
+        self.db_manager.save_load_snapshot(self.balancer.load_distribution)
 
         # 9. Self-healing
         self.healer.notify_health(sub_id, score, status)
