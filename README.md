@@ -425,33 +425,35 @@ flowchart LR
 ## 9. Load Balancing & Self-Healing
 
 ```mermaid
+---
+config:
+  rankSpacing: 90
+  nodeSpacing: 80
+---
 stateDiagram-v2
-    [*] --> Equal: All substations start equal
+    direction TB
 
-    state Equal {
-        [*] --> Normal
-        Normal: Equal Distribution\nS1=33% | S2=33% | S3=33%
-    }
+    [*] --> Equal
 
-    Equal --> Redistributed: Any substation becomes Critical
+    Equal : Equal Distribution\nS1=33% | S2=33% | S3=33%
 
-    state Redistributed {
-        [*] --> LoadShift
-        LoadShift: Emergency Redistribution\nCritical = 10%\nHealthy substations share remaining load\nExample:\nS1=45% | S2=10% | S3=45%
-    }
+    Equal --> Redistributed : Critical Detected
 
-    Redistributed --> Healing: Health score > 70
+    Redistributed : Emergency Redistribution\nCritical=10%\nHealthy=45% each
 
-    state Healing {
-        [*] --> Recovery
-        Recovery: Self-Healing Mode\nRestore +5% load every 10s\n15% → 20% → 25% → ...
-    }
+    Redistributed --> Healing : Health > 70
 
-    Healing --> Equal: Fair distribution restored
+    Healing : Self-Healing\n+5% every 10s
 
-    Redistributed --> Redistributed: Another substation becomes Critical
+    Healing --> Equal : Balanced
 
-    Healing --> Redistributed: Health drops below threshold
+    Redistributed --> MultiCritical : Another Failure
+
+    MultiCritical : Additional Substation\nBecomes Critical
+
+    MultiCritical --> Redistributed
+
+    Healing --> Redistributed : Health Drops
 ```
 
 ### Load redistribution formula
