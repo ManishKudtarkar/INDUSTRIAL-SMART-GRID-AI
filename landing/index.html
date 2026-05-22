@@ -5,120 +5,231 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Smart Grid AI is a local-first desktop application for industrial grid telemetry, anomaly detection, alerts, and load balancing."
+      content="Smart Grid AI is a premium desktop app for local industrial grid simulation, real-time AI monitoring, and fault isolation."
     />
-    <title>Smart Grid AI - Desktop Monitoring App</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Smart Grid AI — Local Desktop Grid Intelligence" />
+    <meta property="og:description" content="Download the Windows desktop app for a polished local smart grid demo with AI-powered monitoring and alerts." />
+    <meta property="og:image" content="assets/icon.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#08111d" />
+    <title>Smart Grid AI — Desktop Monitoring App</title>
     <link rel="icon" href="assets/icon.png" />
+    <link rel="apple-touch-icon" href="assets/icon.png" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="site-header">
       <a class="brand" href="#top" aria-label="Smart Grid AI home">
-        <img src="assets/icon.png" alt="" />
-        <span>Smart Grid AI</span>
+        <img src="assets/icon.png" alt="Smart Grid AI logo" />
+        <div>
+          <strong>Smart Grid AI</strong>
+          <span>Local Grid Intelligence</span>
+        </div>
       </a>
       <nav aria-label="Primary navigation">
+        <a href="#about">About</a>
         <a href="#features">Features</a>
-        <a href="#download">Download</a>
-        <a href="#setup">Setup</a>
+        <a href="#how">How it works</a>
+        <a href="#setup">Launch</a>
+        <a class="nav-cta" href="downloads/SmartGridAI-Setup.exe" download>Download</a>
       </nav>
     </header>
 
     <main id="top">
       <section class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Local-first industrial monitoring</p>
-          <h1>Smart Grid AI</h1>
+          <p class="eyebrow">Enterprise-grade local monitoring</p>
+          <h1>High-fidelity smart grid AI that runs on your Windows desktop.</h1>
           <p class="lead">
-            A downloadable desktop app for live substation telemetry, anomaly detection,
-            predictive maintenance, alerts, and load balancing on the user's own laptop.
+            Install a complete local demo that launches simulated substations, powers a lightweight dashboard,
+            and surfaces AI-driven alerts instantly — no cloud required.
           </p>
-          <div class="hero-actions" id="download">
-            <a class="button primary" href="downloads/SmartGridAI-Setup.exe" download>Download for Windows</a>
-            <a class="button secondary" href="#setup">View setup notes</a>
+          <div class="hero-actions">
+            <a class="button primary" href="downloads/SmartGridAI-Setup.exe" download>Download Windows App</a>
+            <a class="button secondary" href="#features">Explore capabilities</a>
           </div>
-          <p class="release-note">Windows installer for the local-first Smart Grid AI desktop app.</p>
+          <div class="hero-meta">
+            <div>
+              <strong>Local-first</strong>
+              <span>Runs entirely on your machine</span>
+            </div>
+            <div>
+              <strong>Full stack</strong>
+              <span>Simulator, AI, dashboard, and alerts</span>
+            </div>
+            <div>
+              <strong>Rapid demo</strong>
+              <span>Ready in under 60 seconds</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-panel" aria-hidden="true">
+          <div class="panel-shell">
+            <div class="panel-top">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="panel-content">
+              <div class="panel-heading">
+                <div>
+                  <span>Substation status</span>
+                  <strong>Live infrastructure view</strong>
+                </div>
+                <span class="badge status online">ONLINE</span>
+              </div>
+              <ul class="panel-list">
+                <li>
+                  <span class="signal healthy"></span>
+                  <div>
+                    <strong>Substation S1</strong>
+                    <span>Voltage 230V · Load 42% · Stable</span>
+                  </div>
+                </li>
+                <li>
+                  <span class="signal warning"></span>
+                  <div>
+                    <strong>Substation S2</strong>
+                    <span>Temp 108°C · Load 91% · FAULT: combined</span>
+                  </div>
+                </li>
+                <li>
+                  <span class="signal healthy"></span>
+                  <div>
+                    <strong>Substation S3</strong>
+                    <span>Voltage 232V · Load 40% · Normal</span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section class="section intro">
-        <div>
-          <h2>Built for labs, plants, and demos where hardware is nearby.</h2>
+      <section class="section intro" id="about">
+        <div class="about-copy">
+          <p class="overline">One installer. One experience.</p>
+          <h2>Deliver a polished smart grid demo without extra hardware.</h2>
           <p>
-            The app runs the dashboard, local backend, AI models, telemetry receiver, and hardware
-            clients from one installed application. Users do not need to open a browser or run
-            terminal commands once the desktop package is complete.
+            Smart Grid AI packages the backend, telemetry simulator, dashboard, and AI service into a single
+            Windows app. It launches automatically with built-in simulation so stakeholders can evaluate
+            advanced grid intelligence immediately.
           </p>
         </div>
-        <dl class="stats">
-          <div>
-            <dt>Local</dt>
-            <dd>data stays on the laptop</dd>
-          </div>
-          <div>
-            <dt>Realtime</dt>
-            <dd>dashboard polling every 1.5s</dd>
-          </div>
-          <div>
-            <dt>Hardware</dt>
-            <dd>USB, ADB, and simulation modes</dd>
-          </div>
-        </dl>
+
+        <div class="stats-grid">
+          <article>
+            <span>3</span>
+            <p>Simulated substations ready at launch</p>
+          </article>
+          <article>
+            <span>99%</span>
+            <p>Local data privacy with no cloud dependency</p>
+          </article>
+          <article>
+            <span>4</span>
+            <p>AI-driven fault categories including overload, overheat, and voltage sag</p>
+          </article>
+        </div>
       </section>
 
       <section class="section features" id="features">
         <div class="section-heading">
-          <h2>What users get after installing</h2>
-          <p>A desktop command center for monitoring and response.</p>
+          <p class="overline">Built for clarity and control</p>
+          <h2>Core capabilities that make the demo feel complete.</h2>
         </div>
         <div class="feature-grid">
           <article>
             <h3>Live telemetry</h3>
-            <p>Track voltage, current, temperature, harmonics, and load across substations.</p>
+            <p>Voltage, current, temperature, harmonics, and load data refresh continuously for each node.</p>
           </article>
           <article>
-            <h3>AI risk scoring</h3>
-            <p>Detect anomalies, classify faults, and calculate health scores in real time.</p>
+            <h3>AI anomaly detection</h3>
+            <p>IsolationForest and sequence analysis work together to highlight drift, spikes, and pattern breaks.</p>
           </article>
           <article>
-            <h3>Load balancing</h3>
-            <p>Shift target load away from critical substations and support self-healing recovery.</p>
+            <h3>Fault isolation</h3>
+            <p>Identify overloads, overheating, voltage sag, harmonic distortion, and other critical conditions.</p>
           </article>
           <article>
-            <h3>Local alerts</h3>
-            <p>Show alert history in the app, with optional email, Slack, SMS, and database storage.</p>
+            <h3>Health scoring</h3>
+            <p>Each substation receives a live health index so teams can see stability at a glance.</p>
+          </article>
+          <article>
+            <h3>Smart recovery</h3>
+            <p>Automated load balancing reroutes energy away from stressed substations to reduce risk.</p>
+          </article>
+          <article>
+            <h3>Rich local alerts</h3>
+            <p>Alerts are generated immediately inside the app and ready for future email, SMS, or Slack integration.</p>
           </article>
         </div>
       </section>
 
-      <section class="section download-panel">
+      <section class="section how-it-works" id="how">
+        <div class="section-heading">
+          <p class="overline">From install to live view</p>
+          <h2>How the desktop experience comes together.</h2>
+        </div>
+        <div class="workflow">
+          <article class="step-card">
+            <span class="step-label">Step 1</span>
+            <h3>Install the app</h3>
+            <p>The Windows installer sets up the desktop shell, server, and simulator with one click.</p>
+          </article>
+          <article class="step-card">
+            <span class="step-label">Step 2</span>
+            <h3>Launch locally</h3>
+            <p>A FastAPI backend starts immediately and the desktop wrapper opens the dashboard.</p>
+          </article>
+          <article class="step-card">
+            <span class="step-label">Step 3</span>
+            <h3>Simulate substations</h3>
+            <p>Three synthetic substations auto-connect and stream realistic operational telemetry.</p>
+          </article>
+          <article class="step-card">
+            <span class="step-label">Step 4</span>
+            <h3>Review insights</h3>
+            <p>See live health scores, fault alerts, and smart balancing behavior in the UI.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section cta-panel" id="setup">
         <div>
-          <h2>Recommended release flow</h2>
+          <p class="overline">Launch ready</p>
+          <h2>Convert this static landing page into your production download experience.</h2>
           <p>
-            Build the Electron installer, upload it to your hosting provider, then update this page's
-            download link. GitHub Releases, Cloudflare Pages, Netlify, Vercel, or an S3 bucket all work.
+            Add your packaged <code>.exe</code> file to <code>landing/downloads/</code>, verify the download link, and deploy
+            the folder to any static host like Vercel, GitHub Pages, or Netlify.
           </p>
         </div>
-        <a class="button primary" href="downloads/SmartGridAI-Setup.exe" download>Download installer</a>
-      </section>
-
-      <section class="section setup" id="setup">
-        <div class="section-heading">
-          <h2>Deployment checklist</h2>
-          <p>Use this website as the public download surface while the app remains local-first.</p>
+        <div class="launch-grid">
+          <div class="launch-card">
+            <h3>Package</h3>
+            <p>Build your Windows release from the <code>desktop/</code> app bundle.</p>
+          </div>
+          <div class="launch-card">
+            <h3>Publish</h3>
+            <p>Drop the installer into <code>landing/downloads/</code> and confirm the URL.</p>
+          </div>
+          <div class="launch-card">
+            <h3>Deploy</h3>
+            <p>Host the <code>landing/</code> folder as a static website for instant access.</p>
+          </div>
         </div>
-        <ol>
-          <li>Package the desktop app from `desktop/` with Electron Builder.</li>
-          <li>Place the generated `.exe` in `landing/downloads/` or upload it to release hosting.</li>
-          <li>Update the download links in `landing/index.html`.</li>
-          <li>Deploy the `landing/` folder as a static website.</li>
-        </ol>
+        <a class="button primary big" href="downloads/SmartGridAI-Setup.exe" download>Download installer</a>
       </section>
     </main>
 
     <footer class="site-footer">
-      <span>Smart Grid AI</span>
-      <span>Desktop app download site</span>
+      <div>
+        <strong>Smart Grid AI</strong>
+        <span>Desktop-first smart grid simulation and monitoring</span>
+      </div>
+      <div>
+        <span>Built for clean downloads and confident demos</span>
+      </div>
     </footer>
   </body>
 </html>

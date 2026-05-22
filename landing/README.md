@@ -26,6 +26,14 @@ Install Command: leave empty
 
 The included `vercel.json` enables clean URLs and cache headers for assets and downloads.
 
+### Best practice for a production landing site
+
+- Keep `landing/index.html` as the site entry point.
+- Keep static assets in `landing/assets/`.
+- Keep the downloadable installer in `landing/downloads/`.
+- Replace `landing/downloads/SmartGridAI-Setup.exe` with the real installer.
+- Use a static host that serves `landing/` directly, such as Vercel, Netlify, or GitHub Pages.
+
 ### Vercel CLI
 
 From the project root:
