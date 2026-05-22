@@ -105,6 +105,54 @@ nav a:hover {
   color: #071114;
 }
 
+.social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+
+.social-link:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.social-link {
+  position: relative;
+}
+
+.social-link svg {
+  display: block;
+}
+
+.social-label {
+  position: absolute;
+  left: 50%;
+  bottom: -36px;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(5, 12, 20, 0.95);
+  color: #f3f7ff;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  white-space: nowrap;
+}
+
+.social-link:hover .social-label {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-4px);
+}
+
 main {
   position: relative;
   z-index: 2;
