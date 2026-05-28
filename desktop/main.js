@@ -95,9 +95,16 @@ function createMainWindow() {
   const indexPath = path.join(frontendDist, 'index.html')
   if (fs.existsSync(indexPath)) {
     mainWindow.loadFile(indexPath)
-  } else {
+  } else if (isDev) {
     // Dev fallback: load from Vite dev server
     mainWindow.loadURL('http://localhost:5173')
+  } else {
+    dialog.showErrorBox(
+      'Smart Grid AI — Startup Failed',
+      'Could not find the built dashboard at:\n' + indexPath + '\n\nPlease rebuild the app so dashboard/frontend/dist is included.'
+    )
+    app.quit()
+    return
   }
 
   mainWindow.once('ready-to-show', () => {
