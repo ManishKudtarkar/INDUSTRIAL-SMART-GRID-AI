@@ -26,6 +26,8 @@ npm install
 npm run build
 ```
 
+This build script now automatically runs the React dashboard build first, ensuring `dashboard/frontend/dist/index.html` is included in the packaged installer.
+
 The installer will be at `desktop/dist/Smart Grid AI Setup 1.0.0.exe`
 
 ## Requirements for end users
