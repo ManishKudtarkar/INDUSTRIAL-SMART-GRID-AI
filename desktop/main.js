@@ -12,7 +12,7 @@
 
 const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron')
 const path   = require('path')
-const { spawn, exec } = require('child_process')
+const { spawn, exec, spawnSync } = require('child_process')
 const http   = require('http')
 const fs     = require('fs')
 const log    = require('electron-log')
@@ -26,9 +26,7 @@ log.info('Smart Grid AI starting…')
 const isDev       = !app.isPackaged
 let appRoot       = null
 let frontendDist  = null
-const pythonExec  = findPython()
-
-log.info('pythonExec:', pythonExec)
+let pythonExec    = null
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let mainWindow   = null
@@ -41,6 +39,15 @@ function findPython() {
   const bundled = path.join(process.resourcesPath, 'python', 'python.exe')
   if (fs.existsSync(bundled)) return { cmd: bundled, args: [], shell: false }
 
+  return { cmd: 'python', args: [], shell: true }
+}
+
+function verifyPython() {
+  const bundled = path.join(process.resourcesPath, 'python', 'python.exe')
+  if (fs.existsSync(bundled)) {
+    return { cmd: bundled, args: [], shell: false }
+  }
+
   const runners = [
     { cmd: 'python', args: [] },
     { cmd: 'python3', args: [] },
@@ -50,16 +57,13 @@ function findPython() {
 
   for (const runner of runners) {
     const versionCmd = `${runner.cmd} ${runner.args.join(' ')} --version`.trim()
-    try {
-      require('child_process').execSync(versionCmd, { stdio: 'ignore', shell: true })
+    const result = spawnSync(versionCmd, { stdio: 'ignore', shell: true })
+    if (result.status === 0) {
       return { ...runner, shell: true }
-    } catch {
-      // keep checking other runners
     }
   }
 
-  // Last resort: use the plain python command with shell resolution
-  return { cmd: 'python', args: [], shell: true }
+  return null
 }
 
 // ── Splash window ─────────────────────────────────────────────────────────────
@@ -253,6 +257,20 @@ app.whenReady().then(async () => {
   log.info('frontendDist:', frontendDist)
 
   createSplash()
+
+  pythonExec = verifyPython()
+  if (!pythonExec) {
+    log.error('No usable Python interpreter found.')
+    if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close()
+    dialog.showErrorBox(
+      'Smart Grid AI — Startup Failed',
+      'Could not find a working Python 3 interpreter.\n\nPlease install Python 3.10+ and ensure `python` or `py` is available from the command line.'
+    )
+    app.quit()
+    return
+  }
+
+  log.info('Resolved Python interpreter:', pythonExec)
 
   try {
     // Start backend
