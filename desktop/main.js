@@ -24,16 +24,11 @@ log.info('Smart Grid AI starting…')
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
 const isDev       = !app.isPackaged
-const appRoot     = isDev
-  ? path.join(__dirname, '..')                          // dev: project root
-  : path.join(process.resourcesPath, 'app')            // prod: extracted resources
+let appRoot       = null
+let frontendDist  = null
+const pythonExe   = findPython()
 
-const frontendDist = path.join(appRoot, 'dashboard', 'frontend', 'dist')
-const pythonExe    = findPython()
-
-log.info('appRoot:', appRoot)
 log.info('pythonExe:', pythonExe)
-log.info('frontendDist:', frontendDist)
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let mainWindow   = null
@@ -106,6 +101,23 @@ function createMainWindow() {
     app.quit()
     return
   }
+
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    log.error('Renderer failed to load:', errorCode, errorDescription, validatedURL)
+    dialog.showErrorBox(
+      'Smart Grid AI — Renderer Load Failed',
+      `Could not load the dashboard page.\n\n${errorDescription} (${errorCode})\n${validatedURL}`
+    )
+  })
+
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    log.debug('Renderer console:', { level, message, line, sourceId })
+  })
+
+  mainWindow.webContents.on('crashed', () => {
+    log.error('Renderer process crashed')
+    dialog.showErrorBox('Smart Grid AI — Renderer Crashed', 'The dashboard renderer has crashed. Please restart the app.')
+  })
 
   mainWindow.once('ready-to-show', () => {
     if (splashWindow && !splashWindow.isDestroyed()) {
@@ -218,6 +230,14 @@ function cleanup() {
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
+  appRoot = isDev
+    ? path.join(__dirname, '..')                          // dev: project root
+    : app.getAppPath()                                   // prod: app.asar or extracted path
+  frontendDist = path.join(appRoot, 'dashboard', 'frontend', 'dist')
+
+  log.info('appRoot:', appRoot)
+  log.info('frontendDist:', frontendDist)
+
   createSplash()
 
   try {
