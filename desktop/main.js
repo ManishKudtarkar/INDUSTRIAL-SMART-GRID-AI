@@ -37,15 +37,34 @@ const childProcesses = []
 function findPython() {
   // In packaged app, look for bundled Python first
   const bundled = path.join(process.resourcesPath, 'python', 'python.exe')
-  if (fs.existsSync(bundled)) return { cmd: bundled, args: [], shell: false }
+  if (fs.existsSync(bundled)) return { cmd: bundled, args: [] }
 
-  return { cmd: 'python', args: [], shell: true }
+  return { cmd: 'python', args: [] }
+}
+
+function resolveFromPath(candidates) {
+  const pathEnv = process.env.PATH || ''
+  const pathDirs = pathEnv.split(path.delimiter).filter(Boolean)
+  const extensions = process.platform === 'win32' ? ['.exe', '.cmd', '.bat', ''] : ['']
+
+  for (const candidate of candidates) {
+    for (const dir of pathDirs) {
+      for (const ext of extensions) {
+        const full = path.join(dir, candidate.cmd + ext)
+        if (fs.existsSync(full)) {
+          return { cmd: full, args: candidate.args }
+        }
+      }
+    }
+  }
+
+  return null
 }
 
 function verifyPython() {
   const bundled = path.join(process.resourcesPath, 'python', 'python.exe')
   if (fs.existsSync(bundled)) {
-    return { cmd: bundled, args: [], shell: false }
+    return { cmd: bundled, args: [] }
   }
 
   const runners = [
@@ -55,12 +74,19 @@ function verifyPython() {
     { cmd: 'py', args: [] },
   ]
 
+  const resolved = resolveFromPath(runners)
+  if (resolved) {
+    try {
+      const result = spawnSync(resolved.cmd, [...resolved.args, '--version'], { stdio: 'ignore', shell: false })
+      if (result.status === 0) return resolved
+    } catch {}
+  }
+
   for (const runner of runners) {
-    const versionCmd = `${runner.cmd} ${runner.args.join(' ')} --version`.trim()
-    const result = spawnSync(versionCmd, { stdio: 'ignore', shell: true })
-    if (result.status === 0) {
-      return { ...runner, shell: true }
-    }
+    try {
+      const result = spawnSync(runner.cmd, [...runner.args, '--version'], { stdio: 'ignore', shell: false })
+      if (result.status === 0) return runner
+    } catch {}
   }
 
   return null
@@ -158,7 +184,7 @@ function startBackend() {
     const backend = spawn(pythonExec.cmd, [...pythonExec.args, 'api/main.py'], {
       cwd: appRoot,
       env: { ...process.env, PYTHONUNBUFFERED: '1' },
-      shell: pythonExec.shell === true,
+      shell: false,
     })
 
     childProcesses.push(backend)
@@ -205,7 +231,7 @@ function startSubstations() {
     const proc = spawn(pythonExec.cmd, [...pythonExec.args, 'substations/substation_client.py', ...sub.args], {
       cwd: appRoot,
       env: { ...process.env, PYTHONUNBUFFERED: '1' },
-      shell: pythonExec.shell === true,
+      shell: false,
     })
     childProcesses.push(proc)
     proc.stdout.on('data', d => log.debug(`[${sub.id}]`, d.toString().trim()))
