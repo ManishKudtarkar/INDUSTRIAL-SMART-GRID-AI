@@ -39,25 +39,27 @@ const childProcesses = []
 function findPython() {
   // In packaged app, look for bundled Python first
   const bundled = path.join(process.resourcesPath, 'python', 'python.exe')
-  if (fs.existsSync(bundled)) return { cmd: bundled, args: [] }
+  if (fs.existsSync(bundled)) return { cmd: bundled, args: [], shell: false }
 
-  // Fall back to system Python / Windows launcher
-  const candidates = [
+  const runners = [
     { cmd: 'python', args: [] },
     { cmd: 'python3', args: [] },
     { cmd: 'py', args: ['-3'] },
     { cmd: 'py', args: [] },
   ]
 
-  for (const candidate of candidates) {
+  for (const runner of runners) {
+    const versionCmd = `${runner.cmd} ${runner.args.join(' ')} --version`.trim()
     try {
-      const versionCmd = `${candidate.cmd} ${candidate.args.join(' ')} --version`.trim()
-      require('child_process').execSync(versionCmd, { stdio: 'ignore' })
-      return candidate
-    } catch {}
+      require('child_process').execSync(versionCmd, { stdio: 'ignore', shell: true })
+      return { ...runner, shell: true }
+    } catch {
+      // keep checking other runners
+    }
   }
 
-  return { cmd: 'python', args: [] }
+  // Last resort: use the plain python command with shell resolution
+  return { cmd: 'python', args: [], shell: true }
 }
 
 // ── Splash window ─────────────────────────────────────────────────────────────
@@ -152,6 +154,7 @@ function startBackend() {
     const backend = spawn(pythonExec.cmd, [...pythonExec.args, 'api/main.py'], {
       cwd: appRoot,
       env: { ...process.env, PYTHONUNBUFFERED: '1' },
+      shell: pythonExec.shell === true,
     })
 
     childProcesses.push(backend)
@@ -198,6 +201,7 @@ function startSubstations() {
     const proc = spawn(pythonExec.cmd, [...pythonExec.args, 'substations/substation_client.py', ...sub.args], {
       cwd: appRoot,
       env: { ...process.env, PYTHONUNBUFFERED: '1' },
+      shell: pythonExec.shell === true,
     })
     childProcesses.push(proc)
     proc.stdout.on('data', d => log.debug(`[${sub.id}]`, d.toString().trim()))
