@@ -159,8 +159,10 @@ function startBackend() {
     backend.stdout.on('data', d => log.info('[backend]', d.toString().trim()))
     backend.stderr.on('data', d => log.info('[backend]', d.toString().trim()))
     backend.on('error', err => {
+      const pythonCommand = `${pythonExec.cmd} ${pythonExec.args.join(' ')}`.trim()
       log.error('Backend failed to start:', err)
-      reject(err)
+      log.error('Tried Python command:', pythonCommand)
+      reject(new Error(`${err.message} (tried: ${pythonCommand})`))
     })
 
     // Poll until the API responds
@@ -285,5 +287,5 @@ app.on('will-quit', cleanup)
 ipcMain.handle('get-app-info', () => ({
   version: app.getVersion(),
   appRoot,
-  pythonExe,
+  pythonExec,
 }))
