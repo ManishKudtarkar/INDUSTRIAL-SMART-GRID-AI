@@ -26,9 +26,9 @@ log.info('Smart Grid AI starting…')
 const isDev       = !app.isPackaged
 let appRoot       = null
 let frontendDist  = null
-const pythonExe   = findPython()
+const pythonExec  = findPython()
 
-log.info('pythonExe:', pythonExe)
+log.info('pythonExec:', pythonExec)
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let mainWindow   = null
@@ -39,17 +39,25 @@ const childProcesses = []
 function findPython() {
   // In packaged app, look for bundled Python first
   const bundled = path.join(process.resourcesPath, 'python', 'python.exe')
-  if (fs.existsSync(bundled)) return bundled
+  if (fs.existsSync(bundled)) return { cmd: bundled, args: [] }
 
-  // Fall back to system Python
-  const candidates = ['python', 'python3', 'py']
-  for (const c of candidates) {
+  // Fall back to system Python / Windows launcher
+  const candidates = [
+    { cmd: 'python', args: [] },
+    { cmd: 'python3', args: [] },
+    { cmd: 'py', args: ['-3'] },
+    { cmd: 'py', args: [] },
+  ]
+
+  for (const candidate of candidates) {
     try {
-      require('child_process').execSync(`${c} --version`, { stdio: 'ignore' })
-      return c
+      const versionCmd = `${candidate.cmd} ${candidate.args.join(' ')} --version`.trim()
+      require('child_process').execSync(versionCmd, { stdio: 'ignore' })
+      return candidate
     } catch {}
   }
-  return 'python'
+
+  return { cmd: 'python', args: [] }
 }
 
 // ── Splash window ─────────────────────────────────────────────────────────────
@@ -141,7 +149,7 @@ function startBackend() {
   return new Promise((resolve, reject) => {
     log.info('Starting Python backend…')
 
-    const backend = spawn(pythonExe, ['api/main.py'], {
+    const backend = spawn(pythonExec.cmd, [...pythonExec.args, 'api/main.py'], {
       cwd: appRoot,
       env: { ...process.env, PYTHONUNBUFFERED: '1' },
     })
@@ -185,7 +193,7 @@ function startSubstations() {
   ]
 
   for (const sub of substations) {
-    const proc = spawn(pythonExe, ['substations/substation_client.py', ...sub.args], {
+    const proc = spawn(pythonExec.cmd, [...pythonExec.args, 'substations/substation_client.py', ...sub.args], {
       cwd: appRoot,
       env: { ...process.env, PYTHONUNBUFFERED: '1' },
     })
