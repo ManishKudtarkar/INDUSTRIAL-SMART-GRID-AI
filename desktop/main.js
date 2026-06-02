@@ -276,7 +276,7 @@ function cleanup() {
 app.whenReady().then(async () => {
   appRoot = isDev
     ? path.join(__dirname, '..')                          // dev: project root
-    : app.getAppPath()                                   // prod: app.asar or extracted path
+    : path.join(process.resourcesPath, 'app')             // prod: extraResources path
   frontendDist = path.join(appRoot, 'dashboard', 'frontend', 'dist')
 
   log.info('appRoot:', appRoot)
